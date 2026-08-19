@@ -7,7 +7,7 @@ import type { Context } from '@deepseek-ai/cordis'
 // Type-only: the 'conversation.view' SlotMap row is declared by the slot's
 // owning package and must be in the program for register to type.
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
-import { HarnessMapView } from './HarnessMapView.tsx'
+import { BlueprintView } from './BlueprintView.tsx'
 
 /** Required service: the slot registry that owns the conversation view ring. */
 export const inject = ['slots']
@@ -22,11 +22,11 @@ export function apply(ctx: Context): void {
     ctx.slots.register(
       {
         name: 'conversation.view',
-        id: 'mddl-harness-map',
+        id: 'blueprint',
         order: 20,
-        label: () => 'Harness Map',
+        label: () => 'Blueprint',
       },
-      HarnessMapView,
+      BlueprintView,
     ),
   )
 }

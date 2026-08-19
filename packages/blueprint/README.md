@@ -1,16 +1,16 @@
-# dsh-harness-gui
+# dsh-blueprint
 
-Adds a **Harness Map** tab to the DeepSeek Harness web client. Load a graph
+Adds a **Blueprint** tab to the DeepSeek Harness web client. Load a graph
 exported from mddl studio and the tab shows what its overlay changes, what it
 leaves alone, and anything that would break a boot — before you apply it.
 
 ## Install
 
 ```sh
-npx @deepseek-ai/dsh plugin --profile web add dsh-harness-gui
+npx @deepseek-ai/dsh plugin --profile web add dsh-blueprint
 ```
 
-Then start the web profile and open the **Harness Map** tab in a conversation:
+Then start the web profile and open the **Blueprint** tab in a conversation:
 
 ```sh
 npx @deepseek-ai/dsh web
@@ -43,7 +43,7 @@ needs this to become a profile layer** — `dsh.client` alone installs it as a
 plain dependency, and `dsh plugin add` says so:
 
 ```
-warning: dsh-harness-gui declares no dsh.bundle — installed as a plain
+warning: dsh-blueprint declares no dsh.bundle — installed as a plain
 dependency, not a profile layer
 ```
 
@@ -61,8 +61,8 @@ into a real web profile:
 - `dsh plugin --profile web add` appends the package to the profile's
   `dsh.profile.bundles`.
 - `dsh --profile web --dump-config` shows the composed row:
-  `- id: mddl-harness-map / name: 'dsh-harness-gui'`.
-- `dsh web` serves `/plugins/dsh-harness-gui/client.js` and lists the plugin
+  `- id: mddl-blueprint / name: 'dsh-blueprint'`.
+- `dsh web` serves `/plugins/dsh-blueprint/client.js` and lists the plugin
   in the browser boot roster beside `ui-trajectory`, with no console errors.
 
 Rendering the tab needs a live conversation, which needs a workspace and a
@@ -72,5 +72,5 @@ preview and its plugin API is still moving.
 ## Build
 
 ```sh
-pnpm --filter dsh-harness-gui build
+pnpm --filter dsh-blueprint build
 ```

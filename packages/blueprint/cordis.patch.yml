@@ -1,10 +1,11 @@
-# The dsh-harness-gui bundle patch: adds the Harness Map to a profile's
+# The dsh-blueprint bundle patch: adds the Blueprint tab to a profile's
 # browser roster. Applied as its own layer after the profile's bundles, with
 # the profile's cordis.patch.yml and any --patch overlays still to come.
 #
 # A `dsh.client` row is part of the browser roster the modules node half scans
 # into window.__DSH_BOOT__, so one row carries both halves of this package.
+# The row id follows the shipped UI rows (ui-trajectory, ui-plan, ui-goal).
 
 - insert:
-    - id: mddl-harness-map
-      name: 'dsh-harness-gui'
+    - id: ui-blueprint
+      name: 'dsh-blueprint'

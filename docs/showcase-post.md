@@ -4,12 +4,12 @@ Not posted. Review, then post to
 <https://github.com/deepseek-ai/deepseek-harness/discussions> under Show and
 tell. Upstream accepts no external PRs, so a Discussion is the channel.
 
-Before posting, replace the placeholders: a canvas screenshot, a Harness Map
+Before posting, replace the placeholders: a canvas screenshot, a Blueprint
 screenshot, and the npm install line once the package is published.
 
 ---
 
-**Title:** mddl — a visual editor for `cordis.patch.yml`, plus a Harness Map tab
+**Title:** mddl — a visual editor for `cordis.patch.yml`, plus a Blueprint tab
 
 Configuring the harness is where I kept losing time. Not the agent, the config:
 an overlay that patches a row id nothing declares, two rows claiming the same
@@ -31,7 +31,7 @@ loop, an overlay that disables every tool. Rows are addressed by `id`, so a
 repeated id is ambiguous rather than additive — that one is easy to write and
 annoying to debug.
 
-There's also a plugin, `dsh-harness-gui`, that adds a **Harness Map** tab to the
+There's also a plugin, `dsh-blueprint`, that adds a **Blueprint** tab to the
 web client. Load a graph and it shows what the overlay changes, what it leaves
 alone, and the warnings — inside the harness, before you apply anything. It
 registers one entry in the `conversation.view` ring and follows the
@@ -39,7 +39,7 @@ registers one entry in the `conversation.view` ring and follows the
 only the file you pick and never mutates the running harness.
 
 ```sh
-npx @deepseek-ai/dsh plugin --profile web add dsh-harness-gui
+npx @deepseek-ai/dsh plugin --profile web add dsh-blueprint
 ```
 
 Repo: <https://github.com/taltara/mddl-harness> (MIT)

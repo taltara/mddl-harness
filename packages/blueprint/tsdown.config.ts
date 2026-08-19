@@ -18,7 +18,7 @@ const MODULE_TABLE = [
 
 // Must equal the package name: the loader keys its module table by it, and the
 // shell serves the bundle from /plugins/<name>/client.js.
-const PLUGIN_ID = 'dsh-harness-gui'
+const PLUGIN_ID = 'dsh-blueprint'
 
 export default defineConfig([
   {

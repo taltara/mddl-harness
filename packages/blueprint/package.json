@@ -1,5 +1,5 @@
 {
-  "name": "dsh-harness-gui",
+  "name": "dsh-blueprint",
   "version": "0.1.0",
   "description": "See and validate a DeepSeek Harness overlay before you apply it: a Harness Map tab for the web client.",
   "keywords": [
@@ -11,11 +11,11 @@
   ],
   "license": "MIT",
   "author": "talosteam",
-  "homepage": "https://github.com/taltara/mddl-harness/tree/main/packages/harness-gui#readme",
+  "homepage": "https://github.com/taltara/mddl-harness/tree/main/packages/blueprint#readme",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/taltara/mddl-harness.git",
-    "directory": "packages/harness-gui"
+    "directory": "packages/blueprint"
   },
   "bugs": {
     "url": "https://github.com/taltara/mddl-harness/issues"

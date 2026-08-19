@@ -74,7 +74,7 @@ function parseGraph(raw: string): GraphDocument {
  * The conversation view tab. A loaded graph is compiled here in the browser,
  * so the tab shows exactly what the overlay would change before it is applied.
  */
-export function HarnessMapView() {
+export function BlueprintView() {
   const [graph, setGraph] = useState<GraphDocument | undefined>(undefined)
   const [error, setError] = useState<string | undefined>(undefined)
 
@@ -94,7 +94,7 @@ export function HarnessMapView() {
   return (
     <div style={styles.root}>
       <section style={styles.card}>
-        <h2 style={styles.heading}>mddl harness map</h2>
+        <h2 style={styles.heading}>dsh blueprint</h2>
         <p style={{ margin: 0 }}>
           Load a graph exported from mddl studio to see what its overlay changes
           in this harness, and what it leaves alone.
