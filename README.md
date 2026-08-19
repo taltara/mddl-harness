@@ -31,9 +31,13 @@ pnpm dev
 Studio: `http://localhost:5173`
 
 ```sh
+pnpm lint       # biome check
+pnpm format     # biome check --write
 pnpm test
 pnpm typecheck
 ```
+
+CI runs lint, typecheck, test, and build on every push.
 
 The canvas is saved to `localStorage` as you edit, so a reload keeps your graph.
 **Reset** in the header restores the starter graph.

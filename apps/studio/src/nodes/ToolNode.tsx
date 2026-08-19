@@ -1,5 +1,5 @@
 import { isCatalogToolRowId, type ToolNodeData } from '@mddl/graph-schema'
-import { type Node, type NodeProps } from '@xyflow/react'
+import type { Node, NodeProps } from '@xyflow/react'
 import { NodeShell } from './NodeShell.tsx'
 
 export type ToolFlowNode = Node<ToolNodeData, 'tool'>

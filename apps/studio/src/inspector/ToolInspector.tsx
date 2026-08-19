@@ -1,6 +1,6 @@
+import type { ToolFlowNode } from '../store/graphStore.ts'
 import { InspectorField, InspectorNote } from './InspectorField.tsx'
 import { useToolInspector } from './useToolInspector.ts'
-import type { ToolFlowNode } from '../store/graphStore.ts'
 
 interface ToolInspectorProps {
   node: ToolFlowNode

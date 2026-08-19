@@ -1,4 +1,8 @@
-import { NODE_KIND_LABEL, type NodeKind, type NodeRunStatus } from '@mddl/graph-schema'
+import {
+  NODE_KIND_LABEL,
+  type NodeKind,
+  type NodeRunStatus,
+} from '@mddl/graph-schema'
 import { Handle, Position } from '@xyflow/react'
 
 const ACCENT_BAR: Record<NodeKind, string> = {
@@ -63,7 +67,9 @@ export function NodeShell({
         selected ? 'border-white/25' : 'border-white/10'
       } ${statusGlow(status)}`}
     >
-      <div className={`absolute inset-y-0 left-0 w-1 rounded-l-lg ${ACCENT_BAR[kind]}`} />
+      <div
+        className={`absolute inset-y-0 left-0 w-1 rounded-l-lg ${ACCENT_BAR[kind]}`}
+      />
       {target ? (
         <Handle
           id="in"
@@ -87,7 +93,9 @@ export function NodeShell({
           {NODE_KIND_LABEL[kind]}
         </p>
         <p className="mt-1 text-[15px] font-semibold leading-tight">{title}</p>
-        <p className="mt-1 truncate font-mono text-[11px] text-white/45">{subtitle}</p>
+        <p className="mt-1 truncate font-mono text-[11px] text-white/45">
+          {subtitle}
+        </p>
       </div>
     </div>
   )

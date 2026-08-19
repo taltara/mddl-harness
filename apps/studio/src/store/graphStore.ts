@@ -1,4 +1,12 @@
 import {
+  type AgentLoopNodeData,
+  type GraphDocument,
+  type ModelNodeData,
+  type OrchestratorNodeData,
+  starterGraph,
+  type ToolNodeData,
+} from '@mddl/graph-schema'
+import {
   addEdge,
   applyEdgeChanges,
   applyNodeChanges,
@@ -8,14 +16,6 @@ import {
   type Node,
   type NodeChange,
 } from '@xyflow/react'
-import {
-  starterGraph,
-  type AgentLoopNodeData,
-  type GraphDocument,
-  type ModelNodeData,
-  type OrchestratorNodeData,
-  type ToolNodeData,
-} from '@mddl/graph-schema'
 import { create } from 'zustand'
 import { loadGraphDocument, saveGraphDocument } from '../lib/graphStorage.ts'
 import { toGraphDocument } from '../lib/toGraphDocument.ts'

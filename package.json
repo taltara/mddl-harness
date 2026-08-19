@@ -10,6 +10,11 @@
     "dev": "pnpm --filter @mddl/studio dev",
     "build": "pnpm -r --if-present build",
     "test": "pnpm -r --if-present test",
-    "typecheck": "pnpm -r --if-present typecheck"
+    "typecheck": "pnpm -r --if-present typecheck",
+    "lint": "biome check .",
+    "format": "biome check --write ."
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.9"
   }
 }

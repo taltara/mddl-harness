@@ -8,7 +8,10 @@ function request(over: {
 }) {
   return {
     method: over.method ?? 'GET',
-    headers: (over.headers ?? { host: '127.0.0.1:3080' }) as Record<string, string>,
+    headers: (over.headers ?? { host: '127.0.0.1:3080' }) as Record<
+      string,
+      string
+    >,
     socket: { remoteAddress: over.peer ?? '127.0.0.1' },
   }
 }
@@ -29,9 +32,9 @@ describe('isLocalRead', () => {
   })
 
   it('refuses a loopback peer sending a foreign Host header', () => {
-    expect(isLocalRead(request({ headers: { host: 'evil.example.com' } }))).toBe(
-      false,
-    )
+    expect(
+      isLocalRead(request({ headers: { host: 'evil.example.com' } })),
+    ).toBe(false)
   })
 
   it('refuses a cross-site fetch from loopback', () => {

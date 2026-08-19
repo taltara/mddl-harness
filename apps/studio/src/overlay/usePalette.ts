@@ -3,7 +3,7 @@ import {
   MODEL_CATALOG,
   TOOL_CATALOG,
 } from '@mddl/graph-schema'
-import { useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
+import { type DragEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { PALETTE_MIME, type PaletteItem } from '../lib/createNode.ts'
 import { useGraphStore } from '../store/graphStore.ts'
 
@@ -26,8 +26,17 @@ export function paletteItemKey(item: PaletteItem): string {
     : `${item.kind}:${item.entry.rowId}`
 }
 
+/** Split a raw query into the terms every match must contain. */
+export function searchTerms(query: string): string[] {
+  return query.trim().toLowerCase().split(/\s+/).filter(Boolean)
+}
+
 function searchText(item: PaletteItem): string {
-  const parts = [item.entry.label, paletteSubtitle(item), item.entry.description]
+  const parts = [
+    item.entry.label,
+    paletteSubtitle(item),
+    item.entry.description,
+  ]
   if (item.kind === 'tool') {
     parts.push(item.entry.packageName)
   }
@@ -35,7 +44,7 @@ function searchText(item: PaletteItem): string {
 }
 
 /** Every term must appear, so "fs search" narrows instead of widening. */
-function matchesQuery(item: PaletteItem, terms: string[]): boolean {
+export function matchesQuery(item: PaletteItem, terms: string[]): boolean {
   const haystack = searchText(item)
   return terms.every((term) => haystack.includes(term))
 }
@@ -80,7 +89,7 @@ export function usePalette() {
     }
   }, [])
 
-  const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean)
+  const terms = searchTerms(query)
 
   const visible = paletteItems().filter((item) => {
     if (onlyUnplaced && placedKeys.has(paletteItemKey(item))) {

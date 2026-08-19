@@ -1,17 +1,9 @@
-import {
-  Background,
-  Controls,
-  MiniMap,
-  ReactFlow,
-} from '@xyflow/react'
+import { Background, Controls, MiniMap, ReactFlow } from '@xyflow/react'
 import { nodeTypes } from '../nodes/nodeTypes.ts'
-import {
-  type OrchestratorEdge,
-  type OrchestratorNode,
-} from '../store/graphStore.ts'
+import type { OrchestratorEdge, OrchestratorNode } from '../store/graphStore.ts'
 import { useTelemetryStore } from '../store/telemetryStore.ts'
-import { useOrchestratorCanvas } from './useOrchestratorCanvas.ts'
 import { CanvasHint } from './CanvasHint.tsx'
+import { useOrchestratorCanvas } from './useOrchestratorCanvas.ts'
 
 export function OrchestratorCanvas() {
   const canvas = useOrchestratorCanvas()
@@ -23,7 +15,12 @@ export function OrchestratorCanvas() {
   }))
 
   return (
-    <div className="h-full w-full" onDragOver={canvas.onDragOver} onDrop={canvas.onDrop}>
+    // biome-ignore lint/a11y/noStaticElementInteractions: a drop target has no interactive role to take, and every module is reachable without dragging.
+    <div
+      className="h-full w-full"
+      onDragOver={canvas.onDragOver}
+      onDrop={canvas.onDrop}
+    >
       <ReactFlow<OrchestratorNode, OrchestratorEdge>
         nodes={canvas.nodes}
         edges={edges}

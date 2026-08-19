@@ -5,7 +5,9 @@ export function OverlayFactList({ facts }: { facts: OverlayFact[] }) {
     <ul className="space-y-1 px-4 pb-3">
       {facts.map((fact) => (
         <li key={fact.text} className="flex gap-2 text-[11px] leading-snug">
-          <span className={`mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full ${dotClass(fact.kind)}`} />
+          <span
+            className={`mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full ${dotClass(fact.kind)}`}
+          />
           <span className="text-white/65">{fact.text}</span>
         </li>
       ))}

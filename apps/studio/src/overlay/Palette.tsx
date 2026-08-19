@@ -1,4 +1,4 @@
-import { type DragEvent, type ReactNode, type RefObject } from 'react'
+import type { DragEvent, ReactNode, RefObject } from 'react'
 import type { PaletteItem } from '../lib/createNode.ts'
 import { paletteItemKey, paletteSubtitle, usePalette } from './usePalette.ts'
 
@@ -39,11 +39,7 @@ export function Palette() {
             {filtered ? `${visible.length}/${total}` : total}
           </p>
         </div>
-        <PaletteSearch
-          value={query}
-          onChange={setQuery}
-          inputRef={searchRef}
-        />
+        <PaletteSearch value={query} onChange={setQuery} inputRef={searchRef} />
         <button
           type="button"
           onClick={toggleOnlyUnplaced}

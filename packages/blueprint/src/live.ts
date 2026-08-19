@@ -130,7 +130,10 @@ export function injectNames(inject: unknown): string[] {
  * rather than whatever its fiber last was, and an unrecognized state reports
  * `unknown` so a future DSH release degrades instead of mislabeling.
  */
-export function phaseOf(state: number | undefined, disabled: boolean): LivePhase {
+export function phaseOf(
+  state: number | undefined,
+  disabled: boolean,
+): LivePhase {
   if (disabled) {
     return 'disabled'
   }

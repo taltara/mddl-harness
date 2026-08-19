@@ -9,10 +9,7 @@ export function useYamlDrawer() {
   const edges = useGraphStore((state) => state.edges)
   const [copied, setCopied] = useState<'yaml' | 'apply' | undefined>(undefined)
 
-  const graph = useMemo(
-    () => toGraphDocument(nodes, edges),
-    [edges, nodes],
-  )
+  const graph = useMemo(() => toGraphDocument(nodes, edges), [edges, nodes])
   const yaml = useMemo(() => compileGraphToYaml(graph), [graph])
   const summary = useMemo(() => summarizeGraph(graph), [graph])
   const warnings = useMemo(() => lintGraph(graph), [graph])

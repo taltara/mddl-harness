@@ -47,23 +47,29 @@ export const useTelemetryStore = create<TelemetryState>((set, get) => ({
     setStatus(agent.id, 'running')
 
     incoming.forEach((edge, index) => {
-      const timer = window.setTimeout(() => {
-        const source = useGraphStore
-          .getState()
-          .nodes.find((node) => node.id === edge.source)
-        if (source !== undefined) {
-          setStatus(source.id, 'active')
-        }
-      }, 350 * (index + 1))
+      const timer = window.setTimeout(
+        () => {
+          const source = useGraphStore
+            .getState()
+            .nodes.find((node) => node.id === edge.source)
+          if (source !== undefined) {
+            setStatus(source.id, 'active')
+          }
+        },
+        350 * (index + 1),
+      )
       previewTimers.push(timer)
     })
 
-    const doneTimer = window.setTimeout(() => {
-      for (const node of useGraphStore.getState().nodes) {
-        setStatus(node.id, 'done')
-      }
-      set({ previewing: false })
-    }, 350 * incoming.length + 900)
+    const doneTimer = window.setTimeout(
+      () => {
+        for (const node of useGraphStore.getState().nodes) {
+          setStatus(node.id, 'done')
+        }
+        set({ previewing: false })
+      },
+      350 * incoming.length + 900,
+    )
     previewTimers.push(doneTimer)
   },
 }))

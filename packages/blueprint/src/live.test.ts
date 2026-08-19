@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest'
+import { lintLive } from './lintLive.ts'
 import {
+  type EntryLike,
   injectNames,
   phaseOf,
   projectEntries,
   redactConfig,
-  type EntryLike,
 } from './live.ts'
-import { lintLive } from './lintLive.ts'
 
 describe('redactConfig', () => {
   it('withholds credential-shaped keys and reports them', () => {
@@ -26,7 +26,10 @@ describe('redactConfig', () => {
   })
 
   it('drops nested objects rather than partially redacting them', () => {
-    const { config, omitted } = redactConfig({ nested: { apiKey: 'x' }, flag: true })
+    const { config, omitted } = redactConfig({
+      nested: { apiKey: 'x' },
+      flag: true,
+    })
     expect(config).toEqual({ flag: true })
     expect(omitted).toEqual(['nested'])
   })
@@ -67,14 +70,16 @@ describe('phaseOf', () => {
 
 describe('injectNames', () => {
   it('accepts a list', () => {
-    expect(injectNames(['loader', 'webServer'])).toEqual(['loader', 'webServer'])
+    expect(injectNames(['loader', 'webServer'])).toEqual([
+      'loader',
+      'webServer',
+    ])
   })
 
   it('flattens the required/optional form', () => {
-    expect(injectNames({ required: ['loader'], optional: ['locale'] })).toEqual([
-      'loader',
-      'locale',
-    ])
+    expect(injectNames({ required: ['loader'], optional: ['locale'] })).toEqual(
+      ['loader', 'locale'],
+    )
   })
 
   it('ignores anything else', () => {
@@ -83,13 +88,24 @@ describe('injectNames', () => {
 })
 
 function entry(over: EntryLike['options'], fiberState?: number): EntryLike {
-  return { options: over, fiber: fiberState === undefined ? undefined : { state: fiberState } }
+  return {
+    options: over,
+    fiber: fiberState === undefined ? undefined : { state: fiberState },
+  }
 }
 
 describe('projectEntries', () => {
   it('projects a live entry without leaking secrets', () => {
     const [projected] = projectEntries([
-      entry({ id: 'agent-default-model', name: '@deepseek-ai/dsh-llm-deepseek', config: { model: 'x', apiKey: 'k' }, inject: ['loader'] }, 2),
+      entry(
+        {
+          id: 'agent-default-model',
+          name: '@deepseek-ai/dsh-llm-deepseek',
+          config: { model: 'x', apiKey: 'k' },
+          inject: ['loader'],
+        },
+        2,
+      ),
     ])
     expect(projected).toEqual({
       id: 'agent-default-model',
@@ -141,7 +157,9 @@ describe('lintLive', () => {
   })
 
   it('does not fault a disabled entry nothing requires', () => {
-    const entries = projectEntries([entry({ id: 'tool-web', name: 'pkg', disabled: true })])
+    const entries = projectEntries([
+      entry({ id: 'tool-web', name: 'pkg', disabled: true }),
+    ])
     expect(lintLive(entries)).toEqual([])
   })
 

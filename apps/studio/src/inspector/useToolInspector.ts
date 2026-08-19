@@ -1,5 +1,5 @@
 import { isCatalogToolRowId } from '@mddl/graph-schema'
-import { useGraphStore, type ToolFlowNode } from '../store/graphStore.ts'
+import { type ToolFlowNode, useGraphStore } from '../store/graphStore.ts'
 
 export function useToolInspector(node: ToolFlowNode) {
   const patchNodeData = useGraphStore((state) => state.patchNodeData)

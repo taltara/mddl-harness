@@ -5,13 +5,15 @@ export function InspectorField({
   label: string
   value: string
 }) {
+  // A read-only pair, not a form field: <label> here would promise a control
+  // that does not exist.
   return (
-    <label className="block">
+    <div className="block">
       <span className="text-[11px] uppercase tracking-[0.16em] text-white/40">
         {label}
       </span>
       <p className="mt-1 break-all font-mono text-xs text-white/70">{value}</p>
-    </label>
+    </div>
   )
 }
 

@@ -13,7 +13,9 @@ describe('emitPatchYaml', () => {
       },
     ])
 
-    expect(yaml).toContain('npx @deepseek-ai/dsh web --patch "$HOME/Downloads/cordis.patch.yml"')
+    expect(yaml).toContain(
+      'npx @deepseek-ai/dsh web --patch "$HOME/Downloads/cordis.patch.yml"',
+    )
     expect(yaml).toContain('resolved from your terminal cwd')
     expect(yaml).toContain('- id: agent-default-model')
     expect(yaml).toContain('provider: "deepseek-official"')

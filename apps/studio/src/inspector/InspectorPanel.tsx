@@ -17,7 +17,11 @@ export function InspectorPanel() {
         </p>
       </div>
       <div className="flex-1 overflow-y-auto px-4 py-4">
-        {selected === undefined ? <EmptyInspector /> : <InspectorBody node={selected} />}
+        {selected === undefined ? (
+          <EmptyInspector />
+        ) : (
+          <InspectorBody node={selected} />
+        )}
       </div>
     </aside>
   )
@@ -27,8 +31,8 @@ function EmptyInspector() {
   return (
     <div className="space-y-3 text-sm leading-relaxed text-white/60">
       <p>
-        This studio is not inside http://127.0.0.1:3080. A host overlay will
-        not add a Blueprint tab, plugin card, or chat row.
+        This studio is not inside http://127.0.0.1:3080. A host overlay will not
+        add a Blueprint tab, plugin card, or chat row.
       </p>
       <ul className="list-disc space-y-2 pl-4 text-xs text-white/50">
         <li>
@@ -39,12 +43,12 @@ function EmptyInspector() {
         </li>
         <li>
           <span className="text-magenta">Tools</span> on web live in agent
-          presets (Standard / Code / Minimal / Creator), not in this host
-          patch. The web bundle already disables host-plane bash/fs/web.
+          presets (Standard / Code / Minimal / Creator), not in this host patch.
+          The web bundle already disables host-plane bash/fs/web.
         </li>
         <li>
-          <span className="text-amber">Agent loop</span> is a canvas
-          composition target. To show up in dsh, we need a{' '}
+          <span className="text-amber">Agent loop</span> is a canvas composition
+          target. To show up in dsh, we need a{' '}
           <span className="font-mono">dsh.client</span> plugin on{' '}
           <span className="font-mono">conversation.view</span>.
         </li>

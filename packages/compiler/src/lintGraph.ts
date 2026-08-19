@@ -1,6 +1,6 @@
 import type { GraphDocument } from '@mddl/graph-schema'
 import { compileGraphToPatch } from './compileGraphToPatch.ts'
-import { isInsertOp, type CordisPatchOp } from './types.ts'
+import { type CordisPatchOp, isInsertOp } from './types.ts'
 
 export const OVERLAY_WARNING_LEVELS = ['error', 'warning'] as const
 
@@ -52,11 +52,14 @@ export function lintGraph(graph: GraphDocument): OverlayWarning[] {
 
   const tools = graph.nodes.filter((node) => node.data.kind === 'tool')
   const disabledIds = new Set(
-    ops.filter((op) => !isInsertOp(op) && op.disabled === true).map((op) =>
-      isInsertOp(op) ? '' : op.id,
-    ),
+    ops
+      .filter((op) => !isInsertOp(op) && op.disabled === true)
+      .map((op) => (isInsertOp(op) ? '' : op.id)),
   )
-  if (tools.length > 0 && tools.every((node) => disabledIds.has(node.data.rowId))) {
+  if (
+    tools.length > 0 &&
+    tools.every((node) => disabledIds.has(node.data.rowId))
+  ) {
     warnings.push({
       level: 'warning',
       code: 'all-tools-disabled',

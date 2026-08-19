@@ -1,6 +1,6 @@
 import { MODEL_CATALOG } from '@mddl/graph-schema'
+import { type ModelFlowNode, useGraphStore } from '../store/graphStore.ts'
 import { InspectorField, InspectorNote } from './InspectorField.tsx'
-import { useGraphStore, type ModelFlowNode } from '../store/graphStore.ts'
 
 interface ModelInspectorProps {
   node: ModelFlowNode
@@ -24,7 +24,8 @@ export function ModelInspector({ node }: ModelInspectorProps) {
           value={catalogKey}
           onChange={(event) => {
             const next = MODEL_CATALOG.find(
-              (entry) => `${entry.provider}::${entry.model}` === event.target.value,
+              (entry) =>
+                `${entry.provider}::${entry.model}` === event.target.value,
             )
             if (next === undefined) {
               return

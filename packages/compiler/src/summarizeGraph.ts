@@ -1,7 +1,4 @@
-import {
-  isCatalogToolRowId,
-  type GraphDocument,
-} from '@mddl/graph-schema'
+import { type GraphDocument, isCatalogToolRowId } from '@mddl/graph-schema'
 
 export const DSH_APPLY_COMMAND =
   'npx @deepseek-ai/dsh web --patch "$HOME/Downloads/cordis.patch.yml"'
@@ -34,9 +31,8 @@ function wiredSourceIds(graph: GraphDocument, agentId: string): Set<string> {
 
 export function summarizeGraph(graph: GraphDocument): OverlaySummary {
   const agent = graph.nodes.find((node) => node.data.kind === 'agentLoop')
-  const wiredIds = agent === undefined
-    ? new Set<string>()
-    : wiredSourceIds(graph, agent.id)
+  const wiredIds =
+    agent === undefined ? new Set<string>() : wiredSourceIds(graph, agent.id)
   const facts: OverlayFact[] = []
 
   for (const node of graph.nodes) {

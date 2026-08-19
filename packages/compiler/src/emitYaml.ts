@@ -1,6 +1,6 @@
-import { DSH_APPLY_COMMAND, DSH_WEB_URL } from './summarizeGraph.ts'
 import type { OverlaySummary } from './summarizeGraph.ts'
-import { isInsertOp, type CordisPatchOp, type CordisRow } from './types.ts'
+import { DSH_APPLY_COMMAND, DSH_WEB_URL } from './summarizeGraph.ts'
+import { type CordisPatchOp, type CordisRow, isInsertOp } from './types.ts'
 
 function emitScalar(value: unknown): string {
   if (typeof value === 'string') {
@@ -15,10 +15,7 @@ function emitScalar(value: unknown): string {
   throw new Error(`Unsupported YAML scalar: ${typeof value}`)
 }
 
-function emitConfig(
-  config: Record<string, unknown>,
-  indent: string,
-): string[] {
+function emitConfig(config: Record<string, unknown>, indent: string): string[] {
   return Object.entries(config).map(
     ([key, value]) => `${indent}${key}: ${emitScalar(value)}`,
   )
@@ -31,7 +28,9 @@ function emitRow(row: CordisRow, indent: string): string[] {
     lines.push(`${child}name: ${emitScalar(row.name)}`)
   }
   if (row.inject !== undefined && row.inject.length > 0) {
-    lines.push(`${child}inject: [${row.inject.map((item) => emitScalar(item)).join(', ')}]`)
+    lines.push(
+      `${child}inject: [${row.inject.map((item) => emitScalar(item)).join(', ')}]`,
+    )
   }
   if (row.disabled === true) {
     lines.push(`${child}disabled: true`)

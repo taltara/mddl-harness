@@ -4,17 +4,15 @@ import {
   type IsValidConnection,
   useReactFlow,
 } from '@xyflow/react'
-import { useCallback, type DragEvent } from 'react'
+import { type DragEvent, useCallback } from 'react'
+import { canConnect } from '../lib/connection.ts'
 import {
   createNodeData,
   createNodeId,
   PALETTE_MIME,
   type PaletteItem,
 } from '../lib/createNode.ts'
-import {
-  useGraphStore,
-  type OrchestratorNode,
-} from '../store/graphStore.ts'
+import { type OrchestratorNode, useGraphStore } from '../store/graphStore.ts'
 
 function parsePaletteItem(raw: string): PaletteItem | undefined {
   try {
@@ -45,34 +43,7 @@ export function useOrchestratorCanvas() {
   const { screenToFlowPosition } = useReactFlow()
 
   const isValidConnection = useCallback<IsValidConnection<Edge>>(
-    (connection: Connection | Edge) => {
-      const source = nodes.find((node) => node.id === connection.source)
-      const target = nodes.find((node) => node.id === connection.target)
-      if (source === undefined || target === undefined) {
-        return false
-      }
-      if (target.type !== 'agentLoop' || source.type === 'agentLoop') {
-        return false
-      }
-      const duplicate = edges.some(
-        (edge) =>
-          edge.source === source.id && edge.target === target.id,
-      )
-      if (duplicate) {
-        return false
-      }
-      if (source.type === 'model') {
-        const modelAlreadyWired = edges.some((edge) => {
-          if (edge.target !== target.id) {
-            return false
-          }
-          const other = nodes.find((node) => node.id === edge.source)
-          return other?.type === 'model'
-        })
-        return !modelAlreadyWired
-      }
-      return true
-    },
+    (connection: Connection | Edge) => canConnect(nodes, edges, connection),
     [edges, nodes],
   )
 
@@ -84,9 +55,7 @@ export function useOrchestratorCanvas() {
   const onDrop = useCallback(
     (event: DragEvent<HTMLDivElement>) => {
       event.preventDefault()
-      const item = parsePaletteItem(
-        event.dataTransfer.getData(PALETTE_MIME),
-      )
+      const item = parsePaletteItem(event.dataTransfer.getData(PALETTE_MIME))
       if (item === undefined) {
         return
       }

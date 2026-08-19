@@ -1,15 +1,15 @@
-import type { GraphDocument } from '@mddl/graph-schema'
 import {
   compileGraphToYaml,
   lintGraph,
-  summarizeGraph,
   type OverlayFact,
   type OverlayWarning,
+  summarizeGraph,
 } from '@mddl/compiler'
-import { useEffect, useState, type CSSProperties } from 'react'
+import type { GraphDocument } from '@mddl/graph-schema'
+import { type CSSProperties, useEffect, useState } from 'react'
 import { LIVE_ROUTE } from '../index.ts'
-import type { LiveEntry } from '../live.ts'
 import { lintLive } from '../lintLive.ts'
+import type { LiveEntry } from '../live.ts'
 
 const FACT_COLOR: Record<OverlayFact['kind'], string> = {
   change: '#3ddc97',
@@ -68,7 +68,9 @@ function parseGraph(raw: string): GraphDocument {
     !Array.isArray((parsed as GraphDocument).nodes) ||
     !Array.isArray((parsed as GraphDocument).edges)
   ) {
-    throw new Error('Not a Blueprint graph: expected version 1 with nodes and edges.')
+    throw new Error(
+      'Not a Blueprint graph: expected version 1 with nodes and edges.',
+    )
   }
   return parsed as GraphDocument
 }
@@ -102,8 +104,8 @@ export function BlueprintView() {
       <section style={styles.card}>
         <h2 style={styles.heading}>Check an overlay</h2>
         <p style={{ margin: 0 }}>
-          Load a graph exported from the Blueprint canvas to see what its overlay would
-          change here, and what it leaves alone.
+          Load a graph exported from the Blueprint canvas to see what its
+          overlay would change here, and what it leaves alone.
         </p>
         <p style={{ ...styles.muted, margin: '8px 0 10px' }}>
           Reading only. Applying an overlay is still{' '}
@@ -195,7 +197,9 @@ function LiveReport({ live }: { live: LiveState }) {
     byPhase.set(entry.phase, (byPhase.get(entry.phase) ?? 0) + 1)
   }
   const problems = new Set(
-    live.entries.filter((e) => e.phase === 'failed' || e.phase === 'pending').map((e) => e.id),
+    live.entries
+      .filter((e) => e.phase === 'failed' || e.phase === 'pending')
+      .map((e) => e.id),
   )
   const secretCount = live.entries.reduce(
     (total, entry) => total + entry.redacted.length,
@@ -216,8 +220,9 @@ function LiveReport({ live }: { live: LiveState }) {
         </div>
         {secretCount === 0 ? null : (
           <p style={{ ...styles.muted, margin: '10px 0 0', fontSize: 12 }}>
-            {secretCount} credential-shaped {secretCount === 1 ? 'value' : 'values'}{' '}
-            withheld on the host and never sent to this page.
+            {secretCount} credential-shaped{' '}
+            {secretCount === 1 ? 'value' : 'values'} withheld on the host and
+            never sent to this page.
           </p>
         )}
       </section>
@@ -301,9 +306,12 @@ const chipShell: CSSProperties = {
 /** Count with a status dot. The phase name stays available as a tooltip. */
 function PhaseChip({ phase, count }: { phase: string; count: number }) {
   return (
-    <span style={chipShell} title={phase} aria-label={`${count} ${phase}`}>
+    <span style={chipShell} title={phase}>
+      {/* The dot is the only part carrying the phase, so it owns the name.
+          A screen reader reads "140, active" rather than a bare number. */}
       <span
-        aria-hidden
+        role="img"
+        aria-label={phase}
         style={{
           background: phaseColor(phase),
           borderRadius: 999,
@@ -348,7 +356,10 @@ function GraphReport({ graph }: { graph: GraphDocument }) {
           <h2 style={styles.heading}>Warnings</h2>
           <ul style={styles.list}>
             {warnings.map((warning) => (
-              <li key={warning.code} style={{ color: WARNING_COLOR[warning.level] }}>
+              <li
+                key={warning.code}
+                style={{ color: WARNING_COLOR[warning.level] }}
+              >
                 {warning.text}
               </li>
             ))}

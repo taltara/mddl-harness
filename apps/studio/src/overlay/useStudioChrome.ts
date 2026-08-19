@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { useYamlDrawer } from './useYamlDrawer.ts'
 import { useGraphStore } from '../store/graphStore.ts'
 import { useTelemetryStore } from '../store/telemetryStore.ts'
+import { useYamlDrawer } from './useYamlDrawer.ts'
 
 export function useStudioChrome() {
   const [yamlOpen, setYamlOpen] = useState(true)

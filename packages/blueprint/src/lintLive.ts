@@ -26,7 +26,8 @@ export function lintLive(entries: LiveEntry[]): LiveWarning[] {
   // Pending means a required service never arrived — a silent half-boot that
   // looks identical to "working" until the feature is missing.
   for (const entry of entries.filter((item) => item.phase === 'pending')) {
-    const waiting = entry.inject.length > 0 ? ` Waiting on: ${entry.inject.join(', ')}.` : ''
+    const waiting =
+      entry.inject.length > 0 ? ` Waiting on: ${entry.inject.join(', ')}.` : ''
     warnings.push({
       level: 'warning',
       code: 'entry-pending',

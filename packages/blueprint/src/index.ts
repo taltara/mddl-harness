@@ -6,12 +6,13 @@
  * Read-only by construction: this plugin registers no mutating route and never
  * writes config.
  */
+
+import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { Context } from '@deepseek-ai/cordis'
 // Type-only: these packages declare the ctx.loader and ctx.webServer merges.
 import type {} from '@deepseek-ai/cordis-plugin-loader'
 import type {} from '@deepseek-ai/dsh-host-webserver'
-import type { IncomingMessage, ServerResponse } from 'node:http'
-import { projectEntries, type EntryLike } from './live.ts'
+import { type EntryLike, projectEntries } from './live.ts'
 
 export const name = 'dsh-blueprint'
 
@@ -83,9 +84,9 @@ export function apply(ctx: Context): void {
       return
     }
     try {
-      const entries = projectEntries(
-        [...ctx.loader.entries()] as unknown as EntryLike[],
-      )
+      const entries = projectEntries([
+        ...ctx.loader.entries(),
+      ] as unknown as EntryLike[])
       sendJson(res, 200, { entries })
     } catch (cause) {
       sendJson(res, 500, {

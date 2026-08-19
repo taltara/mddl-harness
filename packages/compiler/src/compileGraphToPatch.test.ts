@@ -1,4 +1,4 @@
-import { starterGraph, type GraphDocument } from '@mddl/graph-schema'
+import { type GraphDocument, starterGraph } from '@mddl/graph-schema'
 import { describe, expect, it } from 'vitest'
 import { compileGraphToPatch } from './compileGraphToPatch.ts'
 import { isInsertOp } from './types.ts'

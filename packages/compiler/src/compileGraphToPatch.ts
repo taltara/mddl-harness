@@ -1,6 +1,6 @@
 import {
-  isCatalogToolRowId,
   type GraphDocument,
+  isCatalogToolRowId,
   type OrchestratorNodeData,
 } from '@mddl/graph-schema'
 import type { CordisPatchOp, CordisRow } from './types.ts'
@@ -10,7 +10,9 @@ function connectedSourceIds(
   agentId: string,
 ): Set<string> {
   return new Set(
-    graph.edges.filter((edge) => edge.target === agentId).map((edge) => edge.source),
+    graph.edges
+      .filter((edge) => edge.target === agentId)
+      .map((edge) => edge.source),
   )
 }
 
@@ -63,7 +65,9 @@ function compileAgentLoop(
  */
 export function compileGraphToPatch(graph: GraphDocument): CordisPatchOp[] {
   const agent = graph.nodes.find((node) => node.data.kind === 'agentLoop')
-  const wiredIds = agent ? connectedSourceIds(graph, agent.id) : new Set<string>()
+  const wiredIds = agent
+    ? connectedSourceIds(graph, agent.id)
+    : new Set<string>()
   const ops: CordisPatchOp[] = []
   const inserts: CordisRow[] = []
 

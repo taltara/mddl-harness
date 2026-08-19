@@ -1,5 +1,5 @@
+import { type AgentLoopFlowNode, useGraphStore } from '../store/graphStore.ts'
 import { InspectorField, InspectorNote } from './InspectorField.tsx'
-import { useGraphStore, type AgentLoopFlowNode } from '../store/graphStore.ts'
 
 interface AgentLoopInspectorProps {
   node: AgentLoopFlowNode
@@ -11,7 +11,8 @@ export function AgentLoopInspector({ node }: AgentLoopInspectorProps) {
   return (
     <div className="space-y-4">
       <InspectorNote>
-        Edges into this node decide what the overlay keeps, disables, or inserts.
+        Edges into this node decide what the overlay keeps, disables, or
+        inserts.
       </InspectorNote>
       <InspectorField label="Cordis row id" value={node.data.rowId} />
       <label className="block">
