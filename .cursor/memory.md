@@ -56,6 +56,9 @@ Rejected from the research PDF: Next.js, Socket.io bridge, `dsh.yaml`, Framer on
 - **A third-party plugin needs `dsh.bundle.patch` to become a profile layer.** `dsh.client` alone installs it as a plain dependency (the CLI warns). In-repo UI plugins skip it because `dsh-web-app`'s bundle already inserts their rows; an external package inserts its own via `- insert: [{id, name}]`. `dsh plugin add` then appends the package to the profile's `dsh.profile.bundles`.
 - Profile layout: `$DSH_HOME/profiles/web/{package.json,cordis.yml,cordis.patch.yml}`. `cordis.yml` is an empty `[]` — the tree is composed from `dsh.profile.bundles`, then the profile patch, then `--patch`.
 - `dsh plugin add` needs `-w` at the profile workspace root (upstream #3405).
+- **A patch cannot change an existing row's `name`.** Verified: patching `- id: directory-picker` with a different `name` is silently ignored, the row keeps its module. Patches replace `config`, set `disabled`, or `insert` new rows — nothing else. Swapping a module means disabling the row and inserting a replacement.
+- Launcher flags precede the subcommand: `dsh --profile web --patch <file>`, never `dsh web --patch <file>` (the latter errors, since `dsh web` forwards trailing args to the web app).
+- The workspace picker is `dsh-host-directory-picker-auto`, which mounts the **native** OS dialog on a Mac with a GUI. There is a `-browse` backend, but selecting it is not a patch-reachable change (see above), so headless workspace selection is not available.
 - Verified end to end on rc.7: our row composes, `/plugins/dsh-blueprint/client.js` serves, and the plugin appears in `window.__DSH_BOOT__` beside ui-trajectory. Rendering the tab needs a workspace + provider key.
 
 ## Next phases
