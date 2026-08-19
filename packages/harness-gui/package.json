@@ -1,13 +1,25 @@
 {
-  "name": "@mddl/dsh-plugin",
+  "name": "dsh-harness-gui",
   "version": "0.1.0",
-  "description": "Harness Map: a mddl overlay view for the DeepSeek Harness web client.",
+  "description": "See and validate a DeepSeek Harness overlay before you apply it: a Harness Map tab for the web client.",
   "keywords": [
     "dsh-plugin",
+    "dsh",
     "deepseek-harness",
-    "cordis"
+    "cordis",
+    "gui"
   ],
   "license": "MIT",
+  "author": "talosteam",
+  "homepage": "https://github.com/taltara/mddl-harness/tree/main/packages/harness-gui#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/taltara/mddl-harness.git",
+    "directory": "packages/harness-gui"
+  },
+  "bugs": {
+    "url": "https://github.com/taltara/mddl-harness/issues"
+  },
   "type": "module",
   "main": "lib/index.js",
   "types": "lib/types/index.d.ts",

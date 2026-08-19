@@ -1,4 +1,4 @@
-# The @mddl/dsh-plugin bundle patch: adds the Harness Map to a profile's
+# The dsh-harness-gui bundle patch: adds the Harness Map to a profile's
 # browser roster. Applied as its own layer after the profile's bundles, with
 # the profile's cordis.patch.yml and any --patch overlays still to come.
 #
@@ -7,4 +7,4 @@
 
 - insert:
     - id: mddl-harness-map
-      name: '@mddl/dsh-plugin'
+      name: 'dsh-harness-gui'

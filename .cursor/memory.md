@@ -56,10 +56,11 @@ Rejected from the research PDF: Next.js, Socket.io bridge, `dsh.yaml`, Framer on
 - **A third-party plugin needs `dsh.bundle.patch` to become a profile layer.** `dsh.client` alone installs it as a plain dependency (the CLI warns). In-repo UI plugins skip it because `dsh-web-app`'s bundle already inserts their rows; an external package inserts its own via `- insert: [{id, name}]`. `dsh plugin add` then appends the package to the profile's `dsh.profile.bundles`.
 - Profile layout: `$DSH_HOME/profiles/web/{package.json,cordis.yml,cordis.patch.yml}`. `cordis.yml` is an empty `[]` — the tree is composed from `dsh.profile.bundles`, then the profile patch, then `--patch`.
 - `dsh plugin add` needs `-w` at the profile workspace root (upstream #3405).
-- Verified end to end on rc.7: our row composes, `/plugins/@mddl/dsh-plugin/client.js` serves, and the plugin appears in `window.__DSH_BOOT__` beside ui-trajectory. Rendering the tab needs a workspace + provider key.
+- Verified end to end on rc.7: our row composes, `/plugins/dsh-harness-gui/client.js` serves, and the plugin appears in `window.__DSH_BOOT__` beside ui-trajectory. Rendering the tab needs a workspace + provider key.
 
 ## Next phases
 
-1. Dual-entry `@mddl/dsh-plugin`: host `apply` + `dsh.client` view tab inside `:3080`
+1. ~~Dual-entry plugin + view tab~~ — shipped as `dsh-harness-gui`.
 2. Compile graphs to **agent presets** (`agent.cordis.yml`) for web, keep host overlays for headless
 3. Map `session/event` onto canvas telemetry; import plugin inventory / `--dump-config` as a graph
+4. Grow the lint rules from real breakage reports — that is the differentiator.

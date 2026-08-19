@@ -67,7 +67,13 @@ importers:
         specifier: ^3.2.4
         version: 3.2.7(@types/node@24.13.3)(jiti@2.7.0)(lightningcss@1.32.0)
 
-  packages/dsh-plugin:
+  packages/graph-schema:
+    devDependencies:
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/harness-gui:
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: ^4.0.1
@@ -93,12 +99,6 @@ importers:
       tsdown:
         specifier: ^0.15.6
         version: 0.15.12(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3)(typescript@5.9.3)
-      typescript:
-        specifier: ^5.9.2
-        version: 5.9.3
-
-  packages/graph-schema:
-    devDependencies:
       typescript:
         specifier: ^5.9.2
         version: 5.9.3

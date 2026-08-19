@@ -16,7 +16,9 @@ const MODULE_TABLE = [
   '@deepseek-ai/dsh-client-runtime/client',
 ]
 
-const PLUGIN_ID = '@mddl/dsh-plugin'
+// Must equal the package name: the loader keys its module table by it, and the
+// shell serves the bundle from /plugins/<name>/client.js.
+const PLUGIN_ID = 'dsh-harness-gui'
 
 export default defineConfig([
   {
