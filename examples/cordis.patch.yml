@@ -1,0 +1,20 @@
+# Overlay for DeepSeek Harness. This is a patch, not a full profile.
+# --patch is resolved from your terminal cwd, not the studio.
+# Relative ./ paths fail if you are in ~. Use an absolute path.
+# After Export: npx @deepseek-ai/dsh web --patch "$HOME/Downloads/cordis.patch.yml"
+# Then open http://127.0.0.1:3080
+
+# Unchanged dsh-base rows:
+#   Keep Bash from dsh-base (tool-bash).
+#   Keep Web Search from dsh-base (tool-web).
+#   Keep Filesystem from dsh-base (tool-fs).
+#   Keep the bundle persona (system-prompt unchanged).
+# Patch rows below:
+#   Set default model to DeepSeek V4 Flash (agent-default-model).
+# Notes:
+#   This overlay does not add a DSH UI tab. Web sessions load tools from agent presets, not from wired canvas tools.
+
+- id: agent-default-model
+  config:
+    provider: "deepseek-official"
+    model: "deepseek-v4-flash"

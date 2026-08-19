@@ -1,0 +1,61 @@
+@import "tailwindcss";
+@import "@xyflow/react/dist/style.css";
+
+@theme {
+  --font-sans: "Outfit", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --color-canvas: #07080c;
+  --color-panel: #0e1118;
+  --color-node: #141821;
+  --color-cyan: #5ce1e6;
+  --color-magenta: #f472b6;
+  --color-amber: #f5c14a;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  background: var(--color-canvas);
+  color: #e8e6e3;
+  font-family: var(--font-sans);
+}
+
+.react-flow__background {
+  background-color: #07080c !important;
+}
+
+.react-flow__minimap {
+  background-color: #0e1118 !important;
+  border: 1px solid rgb(255 255 255 / 0.08);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.react-flow__controls {
+  border: 1px solid rgb(255 255 255 / 0.08);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: none;
+}
+
+.react-flow__controls-button {
+  background: #141821;
+  border-bottom: 1px solid rgb(255 255 255 / 0.08);
+  fill: #d6d3d1;
+}
+
+.react-flow__controls-button:hover {
+  background: #1c2230;
+}
+
+.react-flow__edge-path {
+  stroke-width: 1.75;
+}
+
+.react-flow__handle {
+  width: 10px;
+  height: 10px;
+  border: 2px solid #07080c;
+}
