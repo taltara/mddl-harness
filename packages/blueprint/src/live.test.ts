@@ -145,11 +145,14 @@ describe('lintLive', () => {
     expect(lintLive(entries)).toEqual([])
   })
 
-  it('reports duplicate live ids', () => {
+  it('accepts the same id in several trees, as agent presets produce', () => {
+    // loader.entries() walks nested subtrees, so every preset contributes its
+    // own tool-bash. Flagging that buried the real findings under 21 errors.
     const entries = projectEntries([
       entry({ id: 'tool-bash', name: 'pkg' }, 2),
       entry({ id: 'tool-bash', name: 'pkg' }, 2),
+      entry({ id: 'tool-bash', name: 'pkg' }, 2),
     ])
-    expect(lintLive(entries).map((w) => w.code)).toContain('duplicate-entry-id')
+    expect(lintLive(entries)).toEqual([])
   })
 })

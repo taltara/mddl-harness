@@ -34,21 +34,12 @@ export function lintLive(entries: LiveEntry[]): LiveWarning[] {
     })
   }
 
-  const seen = new Set<string>()
-  const duplicates = new Set<string>()
-  for (const entry of entries) {
-    if (seen.has(entry.id)) {
-      duplicates.add(entry.id)
-    }
-    seen.add(entry.id)
-  }
-  for (const id of [...duplicates].sort()) {
-    warnings.push({
-      level: 'error',
-      code: 'duplicate-entry-id',
-      text: `Two live entries share the id "${id}". Rows are addressed by id, so a patch targeting it is ambiguous.`,
-    })
-  }
+  // No duplicate-id rule here, deliberately. A loader id is unique only
+  // "inside the containing entry tree", and loader.entries() walks the root
+  // tree plus every nested subtree — so each agent preset contributes its own
+  // tool-bash, tool-fs, and so on. Those repeats are the normal shape of a
+  // booted harness, not a fault. The overlay compiler still checks for
+  // duplicates, where one graph really does resolve against one tree.
 
   // A disabled entry whose services others require. `inject` names services
   // rather than ids, so this only fires on the conventional id === service
