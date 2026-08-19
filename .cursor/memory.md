@@ -36,6 +36,24 @@ Rejected from the research PDF: Next.js, Socket.io bridge, `dsh.yaml`, Framer on
 - A host overlay is invisible in Chat. Settings → Models is the only starter-graph effect. Settings → Plugins is the plugin inventory (`ui-settings-plugin-inventory`). Trajectory is a `conversation.view` tab. `ui-cordis` is Creator-mode dynamic plugin cards, not a composition canvas.
 - Upstream shape: npm package with `"dsh": { "bundle": { "patch": "./cordis.patch.yml" } }` plus `"dsh": { "client": { "platform": "web" } }`, installed via `dsh plugin --profile web add`, registering a `conversation.view` tab (Trajectory is the template).
 
+## Shipped since Phase 1
+
+- Graph persists to `localStorage` (`mddl.graph.v1`); status normalized to `idle` on save. **Reset** restores the starter graph.
+- Agent Loop is a palette item, capped at one per graph (compiler patches a single loop).
+- Palette search + "Not on canvas" filter + on-canvas badges. Usability is an adoption lever, not polish.
+- Compiler: an off/unwired **out-of-catalog** tool now emits nothing. It used to emit `disabled: true` for a row never inserted — an unresolvable reference, the same class as upstream boot failures.
+- `examples/cordis.patch.yml` is guarded by a test against `compileGraphToYaml(starterGraph)`.
+- git + MIT + CI (typecheck / test / build). Studio URL is `localhost:5173` (Vite binds IPv6-only here, so `127.0.0.1` can fail).
+
+## Upstream reality (researched 2026-08-19)
+
+- **No external PRs accepted** (CONTRIBUTING.md); Issues disabled. Discussions + third-party plugins are the sanctioned path. Ship as a `dsh-plugin`, showcase in a Discussion.
+- Upstream declined a native GUI (discussion #91). GUI/orchestration space is community-owned: `dshmarket` (~1.2k stars, plugin marketplace) dominates; `Knotline` is the only React Flow canvas and is very early.
+- Top community pain is `cordis.patch.yml` / `dsh plugin add` breaking boot (#1197, #2889, #3421). Diff-not-dump compilation + patch linting is our wedge.
+- Client plugin contract (verified against real source, `0.1.0-rc.8`): `dsh.client` = `{ inject: [...], platform: 'web' }`; host half `lib/index.js` (browser-only plugins export a no-op `apply`), client half `lib/client.js`.
+- Tab registration: `ctx.slots.inject('conversation.view', () => ctx.slots.register({ name, id, order, locale, label, inject }, Component))`. `conversation.view` is `kind: 'list'`, `scope: 'session'`.
+- Client bundle is a closure factory: `window.__ModuleLoader__.load({ id, factory: (require) => ... })`, CJS/browser, `entryFileNames: client.js`. Runtime module table is only `react`, `react/jsx-runtime`, `react-dom`, `react-dom/client`, `@deepseek-ai/cordis`, `dsh-client-ui-slots`, `dsh-client-ui-primitives`, plus preloaded `dsh-client-runtime/client`. Everything else must inline or be type-only.
+
 ## Next phases
 
 1. Dual-entry `@mddl/dsh-plugin`: host `apply` + `dsh.client` view tab inside `:3080`
