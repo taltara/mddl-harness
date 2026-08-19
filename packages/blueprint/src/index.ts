@@ -16,6 +16,7 @@ import {
   readdir,
   readFile,
   rename,
+  stat,
   unlink,
   writeFile,
 } from 'node:fs/promises'
@@ -29,6 +30,7 @@ import { compileGraphToPatch, emitPatchYaml } from '@mddl/compiler'
 import type { GraphDocument } from '@mddl/graph-schema'
 import { type EntryLike, projectEntries } from './live.ts'
 import { composePatchFile, diffLines, revisionOf } from './patchFile.ts'
+import { type PreflightFinding, preflightOps } from './preflight.ts'
 import {
   CSRF_TOKEN,
   csrfMatches,
@@ -45,6 +47,8 @@ export const inject = ['loader', 'webServer']
 export const LIVE_ROUTE = '/dsh-blueprint/api/live'
 export const PREVIEW_ROUTE = '/dsh-blueprint/api/preview'
 export const APPLY_ROUTE = '/dsh-blueprint/api/apply'
+export const BACKUPS_ROUTE = '/dsh-blueprint/api/backups'
+export const RESTORE_ROUTE = '/dsh-blueprint/api/restore'
 
 /** Body cap. A patch overlay is kilobytes; anything larger is not one. */
 const MAX_BODY = 512 * 1024
@@ -187,6 +191,36 @@ async function readPatchFile(path: string): Promise<string> {
   }
 }
 
+function backupDir(path: string): string {
+  return join(dirname(path), '.dsh-blueprint', 'backups')
+}
+
+/** Snapshots, newest first, with the size and time a person can recognise. */
+export async function listBackups(
+  path: string,
+): Promise<{ id: string; savedAt: string; bytes: number }[]> {
+  const dir = backupDir(path)
+  let names: string[] = []
+  try {
+    names = await readdir(dir)
+  } catch {
+    return []
+  }
+  const rows = await Promise.all(
+    names
+      .filter((name) => name.endsWith('.yml'))
+      .map(async (name) => {
+        const info = await stat(join(dir, name))
+        return {
+          id: name.replace(/\.yml$/, ''),
+          savedAt: info.mtime.toISOString(),
+          bytes: info.size,
+        }
+      }),
+  )
+  return rows.sort((a, b) => b.savedAt.localeCompare(a.savedAt))
+}
+
 /** Keep the last 20 backups, newest last by name. */
 async function backup(path: string, source: string): Promise<string> {
   const dir = join(dirname(path), '.dsh-blueprint', 'backups')
@@ -231,6 +265,18 @@ export function apply(ctx: Context): void {
     const run = queue.then(task, task)
     queue = run.catch(() => undefined)
     return run
+  }
+
+  const preflight = async (
+    graph: GraphDocument,
+    path: string,
+  ): Promise<PreflightFinding[]> => {
+    const liveIds = new Set(
+      [...ctx.loader.entries()].map(
+        (entry) => (entry as unknown as EntryLike).options?.id ?? '',
+      ),
+    )
+    return preflightOps(dirname(path), compileGraphToPatch(graph), liveIds)
   }
 
   const patchPath = (): string => {
@@ -286,6 +332,7 @@ export function apply(ctx: Context): void {
         token: previewToken(revision, candidate),
         diff: diffLines(source, candidate),
         unchanged: candidate === source,
+        findings: await preflight(graph, path),
       })
     } catch (cause) {
       sendJson(res, 400, {
@@ -316,6 +363,15 @@ export function apply(ctx: Context): void {
             { status: 409 },
           )
         }
+        const blocking = (await preflight(graph, path)).filter(
+          (finding) => finding.level === 'blocking',
+        )
+        if (blocking.length > 0) {
+          throw Object.assign(
+            new Error(blocking.map((finding) => finding.text).join(' ')),
+            { status: 422 },
+          )
+        }
         const candidate = composePatchFile(source, rowsFor(graph))
         if (
           typeof body.token !== 'string' ||
@@ -342,8 +398,77 @@ export function apply(ctx: Context): void {
     }
   }
 
+  const backups = async (
+    req: IncomingMessage,
+    res: ServerResponse,
+  ): Promise<void> => {
+    if (!isLocalRead(req)) {
+      sendJson(res, 403, { error: 'blueprint: local same-origin reads only' })
+      return
+    }
+    try {
+      sendJson(res, 200, { backups: await listBackups(patchPath()) })
+    } catch (cause) {
+      sendJson(res, 500, {
+        error: cause instanceof Error ? cause.message : String(cause),
+      })
+    }
+  }
+
+  /**
+   * Restore a snapshot. The current file is backed up first, so a restore is
+   * itself undoable — rolling back should never be the irreversible step.
+   */
+  const restore = async (
+    req: IncomingMessage,
+    res: ServerResponse,
+  ): Promise<void> => {
+    if (!isLocalWrite(req)) {
+      sendJson(res, 403, { error: 'blueprint: local same-origin writes only' })
+      return
+    }
+    try {
+      const body = JSON.parse(await readBody(req)) as { id?: string }
+      const id = body.id
+      // Reject anything that is not a bare snapshot id, so a crafted id
+      // cannot walk out of the backup directory.
+      if (typeof id !== 'string' || !/^[a-f0-9]{8,64}$/.test(id)) {
+        throw new Error('blueprint: not a snapshot id')
+      }
+      const path = patchPath()
+      const file = join(backupDir(path), `${id}.yml`)
+      await exclusive(async () => {
+        const snapshot = await readFile(file, 'utf8')
+        const current = await readPatchFile(path)
+        if (current !== '') {
+          await backup(path, current)
+        }
+        await atomicWrite(path, current, snapshot)
+        sendJson(res, 200, { path, revision: revisionOf(snapshot) })
+      })
+    } catch (cause) {
+      sendJson(res, 400, {
+        error: cause instanceof Error ? cause.message : String(cause),
+      })
+    }
+  }
+
   ctx.effect(() =>
     ctx.webServer.register({ kind: 'exact', path: LIVE_ROUTE, handler: live }),
+  )
+  ctx.effect(() =>
+    ctx.webServer.register({
+      kind: 'exact',
+      path: BACKUPS_ROUTE,
+      handler: backups,
+    }),
+  )
+  ctx.effect(() =>
+    ctx.webServer.register({
+      kind: 'exact',
+      path: RESTORE_ROUTE,
+      handler: restore,
+    }),
   )
   ctx.effect(() =>
     ctx.webServer.register({

@@ -41,10 +41,13 @@ export interface LiveEntry {
   redacted: string[]
   /** Keys not shown because they nest. Distinct from redacted: not secrets. */
   omitted: string[]
+  /** Why the entry failed, when the runtime exposes it. Best effort. */
+  error?: string
 }
 
 /** Structural view of a loader Entry. Keeps cordis out of the test program. */
 export interface EntryLike {
+  fiberError?: unknown
   options?: {
     id?: string
     name?: string
@@ -54,7 +57,27 @@ export interface EntryLike {
     inject?: unknown
   }
   disabled?: boolean
-  fiber?: { state?: number } | undefined
+  fiber?: { state?: number; error?: unknown; _error?: unknown } | undefined
+}
+
+/**
+ * Cordis keeps the failure on the fiber but does not export it, so this reads
+ * defensively and treats absence as normal. A missing reason costs a nicer
+ * message; a throw here would cost the whole tree.
+ */
+export function failureReason(entry: EntryLike): string | undefined {
+  const raw = entry.fiber?.error ?? entry.fiber?._error
+  if (raw === undefined || raw === null) {
+    return undefined
+  }
+  if (raw instanceof Error) {
+    return raw.message
+  }
+  if (typeof raw === 'string') {
+    return raw
+  }
+  const message = (raw as { message?: unknown }).message
+  return typeof message === 'string' ? message : undefined
 }
 
 /**
@@ -147,6 +170,7 @@ export function projectEntry(entry: EntryLike): LiveEntry {
   const options = entry.options ?? {}
   const disabled = entry.disabled === true || options.disabled === true
   const { config, redacted, omitted } = redactConfig(options.config)
+  const reason = failureReason(entry)
   return {
     id: typeof options.id === 'string' ? options.id : '(unnamed)',
     name: typeof options.name === 'string' ? options.name : '(unknown module)',
@@ -157,6 +181,7 @@ export function projectEntry(entry: EntryLike): LiveEntry {
     config,
     redacted,
     omitted,
+    ...(reason === undefined ? {} : { error: reason }),
   }
 }
 

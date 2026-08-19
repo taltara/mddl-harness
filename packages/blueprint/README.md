@@ -36,6 +36,26 @@ plugin is configured, loaded, and *crashed* — that fact only exists at runtime
 studio and the tab shows what changes, what stays, and the same lint pass —
 plus the exact `cordis.patch.yml` that would be written.
 
+## It refuses to brick your harness
+
+A row naming a package the profile cannot load is not a degraded row — it is
+fatal. Cordis fails module resolution during boot, so the harness does not
+start at all, the Blueprint tab is gone with it, and the only way back is
+editing YAML by hand.
+
+So the check runs *before* the write, not after: every inserted package is
+verified present in the profile, and a missing one blocks the apply with a
+422 and the install command you need. This is the one situation where a config
+tool has to refuse rather than warn — there is no running harness left to warn
+in.
+
+## Snapshots
+
+Every write snapshots the previous file under `.dsh-blueprint/backups/`, and
+the tab lists them newest first with a one-click restore. Restoring snapshots
+the current file first, so rolling back is itself undoable. Snapshot ids are
+validated as bare hex, so a crafted id cannot walk out of the backup directory.
+
 ## Writing an overlay back
 
 The tab can write the overlay into the profile's `cordis.patch.yml` for you,

@@ -6,8 +6,14 @@ import {
   summarizeGraph,
 } from '@mddl/compiler'
 import type { GraphDocument } from '@mddl/graph-schema'
-import { type CSSProperties, useEffect, useState } from 'react'
-import { APPLY_ROUTE, LIVE_ROUTE, PREVIEW_ROUTE } from '../index.ts'
+import { type CSSProperties, useCallback, useEffect, useState } from 'react'
+import {
+  APPLY_ROUTE,
+  BACKUPS_ROUTE,
+  LIVE_ROUTE,
+  PREVIEW_ROUTE,
+  RESTORE_ROUTE,
+} from '../index.ts'
 import { lintLive } from '../lintLive.ts'
 import type { LiveEntry } from '../live.ts'
 
@@ -123,6 +129,10 @@ export function BlueprintView() {
           <p style={{ color: WARNING_COLOR.error, marginBottom: 0 }}>{error}</p>
         )}
       </section>
+
+      {live.status === 'ready' && live.csrf !== undefined ? (
+        <SnapshotsPanel csrf={live.csrf} />
+      ) : null}
 
       {graph === undefined ? null : (
         <>
@@ -420,6 +430,7 @@ type ApplyState =
       token: string
       diff: { kind: 'same' | 'add' | 'remove'; text: string }[]
       unchanged: boolean
+      findings: { level: string; code: string; text: string }[]
     }
   | { status: 'done'; backup?: string }
   | { status: 'error'; message: string }
@@ -471,6 +482,7 @@ function ApplyPanel({
         token: body.token,
         diff: body.diff ?? [],
         unchanged: body.unchanged === true,
+        findings: body.findings ?? [],
       })
     } catch (cause) {
       setState({
@@ -519,6 +531,23 @@ function ApplyPanel({
 
       {state.status === 'previewed' ? (
         <>
+          {state.findings.length === 0 ? null : (
+            <ul style={{ ...styles.list, marginBottom: 10 }}>
+              {state.findings.map((finding) => (
+                <li
+                  key={finding.code + finding.text}
+                  style={{
+                    color:
+                      finding.level === 'blocking'
+                        ? WARNING_COLOR.error
+                        : WARNING_COLOR.warning,
+                  }}
+                >
+                  {finding.text}
+                </li>
+              ))}
+            </ul>
+          )}
           {state.unchanged ? (
             <p style={{ color: FACT_COLOR.keep, margin: '0 0 10px' }}>
               Nothing to change — the file already says this.
@@ -537,7 +566,8 @@ function ApplyPanel({
               ))}
             </pre>
           )}
-          {state.unchanged ? null : (
+          {state.unchanged ||
+          state.findings.some((f) => f.level === 'blocking') ? null : (
             <button
               type="button"
               onClick={() => void confirm(state.revision, state.token)}
@@ -582,4 +612,90 @@ const buttonStyle: CSSProperties = {
   cursor: 'pointer',
   font: 'inherit',
   padding: '4px 12px',
+}
+
+interface Snapshot {
+  id: string
+  savedAt: string
+  bytes: number
+}
+
+/**
+ * Snapshots of the patch file, newest first. Restoring takes a snapshot of
+ * what is there first, so rolling back is never the irreversible step.
+ */
+function SnapshotsPanel({ csrf }: { csrf: string }) {
+  const [rows, setRows] = useState<Snapshot[] | undefined>(undefined)
+  const [note, setNote] = useState<string | undefined>(undefined)
+
+  // Stable across renders so the effect can depend on it honestly instead of
+  // claiming an empty dependency list.
+  const load = useCallback(async () => {
+    try {
+      const body = await (await fetch(BACKUPS_ROUTE)).json()
+      setRows(body.backups ?? [])
+    } catch {
+      setRows([])
+    }
+  }, [])
+
+  useEffect(() => {
+    void load()
+  }, [load])
+
+  const restore = async (id: string) => {
+    setNote('Restoring…')
+    try {
+      const response = await fetch(RESTORE_ROUTE, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-blueprint-csrf': csrf,
+        },
+        body: JSON.stringify({ id }),
+      })
+      const body = await response.json()
+      if (!response.ok) {
+        throw new Error(body?.error ?? `host returned ${response.status}`)
+      }
+      setNote('Restored. Restart the harness to load it.')
+      await load()
+    } catch (cause) {
+      setNote(cause instanceof Error ? cause.message : String(cause))
+    }
+  }
+
+  if (rows === undefined || rows.length === 0) {
+    return null
+  }
+
+  return (
+    <section style={styles.card}>
+      <h2 style={styles.heading}>Snapshots</h2>
+      <p style={{ ...styles.muted, margin: '0 0 10px', fontSize: 12 }}>
+        Taken before every write. Restoring snapshots the current file first, so
+        you can undo the undo.
+      </p>
+      <ul style={styles.list}>
+        {rows.map((row) => (
+          <li key={row.id} style={{ marginBottom: 4 }}>
+            <span style={{ fontFamily: 'monospace', fontSize: 12 }}>
+              {row.savedAt.replace('T', ' ').slice(0, 19)}
+            </span>{' '}
+            <span style={styles.muted}>({row.bytes} bytes)</span>{' '}
+            <button
+              type="button"
+              onClick={() => void restore(row.id)}
+              style={buttonStyle}
+            >
+              Restore
+            </button>
+          </li>
+        ))}
+      </ul>
+      {note === undefined ? null : (
+        <p style={{ ...styles.muted, margin: '10px 0 0' }}>{note}</p>
+      )}
+    </section>
+  )
 }
