@@ -61,7 +61,7 @@ Live harness execution, profile install, or a DSH client slot. "Preview telemetr
 
 ## Roadmap
 
-Shipped in `dsh-blueprint` 0.2.0: reading the live loader tree, and linting the
+Shipped in `dsh-blueprint` 0.2.1: reading the live loader tree, and linting the
 config you actually booted (failed entries, entries stuck waiting on a service,
 disabled rows something still requires). Next, in order:
 

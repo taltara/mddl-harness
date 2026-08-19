@@ -1,11 +1,12 @@
-# Showcase post — ready to paste
+# Showcase post — posted
 
-Post to the **Show Your Plugins!** category at
+Posted to the **Show Your Plugins!** category at
 <https://github.com/deepseek-ai/deepseek-harness/discussions>. Upstream accepts
-no external PRs, so a Discussion is the channel.
+no external PRs, so a Discussion is the channel. Kept here as the record, and
+as the starting point for the next release's post.
 
-**Before posting:** confirm npm is on 0.2.1 (`npm view dsh-blueprint version`).
-0.2.0 shipped a lint bug that reported 21 false errors on a healthy harness.
+Against `dsh-blueprint` 0.2.1. If you reuse this copy for a later release,
+re-check every version and capability claim below first.
 
 **Images**, both in `scratchpad/shots/`, drop where marked below:
 - `studio-canvas.png` → under "Build it on a canvas"
