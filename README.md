@@ -37,6 +37,9 @@ pnpm typecheck
 The canvas is saved to `localStorage` as you edit, so a reload keeps your graph.
 **Reset** in the header restores the starter graph.
 
+Find modules in the palette by name, row id, package, or description. Press
+`/` to jump to search, and **Not on canvas** hides what you already placed.
+
 Apply an exported overlay. `--patch` is resolved from your **terminal cwd**, not the studio. Running `./cordis.patch.yml` from `~` looks for `/Users/<you>/cordis.patch.yml`.
 
 After **Export** (typical macOS download):
