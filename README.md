@@ -59,6 +59,21 @@ npx @deepseek-ai/dsh web --patch "$PWD/examples/cordis.patch.yml"
 
 Live harness execution, profile install, or a DSH client slot. "Preview telemetry" is a local animation that proves the glow/edge path. Real run state comes from `session/event` in a later phase.
 
+## Roadmap
+
+Today the studio composes a graph and compiles it; the overlay is applied by
+you, with `--patch`. Next, in order:
+
+1. **Read the live tree.** Project `ctx.loader.entries()` into a graph, so you
+   see the config you actually booted — including entries that failed — rather
+   than one you rebuilt by hand.
+2. **Write the overlay back**, behind a marker-delimited block that leaves
+   hand-written YAML untouched: revision check, backup, atomic replace, and
+   verification that the running tree matches before the change is kept.
+3. **Dependency-aware linting.** Warn when a change disables a service another
+   row injects, and keep growing the rules from real breakage.
+4. Map `session/event` onto canvas telemetry, and English/中文 both first class.
+
 ## Status
 
 Early. DSH is itself a developer preview with breaking changes between release
