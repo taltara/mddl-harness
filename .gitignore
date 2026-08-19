@@ -8,4 +8,6 @@ coverage
 .env
 .env.*
 !.env.example
-lib
+# Build output of the published plugin only — a bare "lib" would also
+# ignore apps/studio/src/lib, which is source.
+/packages/blueprint/lib
