@@ -26,9 +26,9 @@ export function useYamlDrawer() {
     downloadText('cordis.patch.yml', yaml)
   }
 
-  // The graph, not the overlay: this is what the DSH Harness Map tab loads.
+  // The graph, not the overlay: this is what the DSH Blueprint tab loads.
   const exportGraph = () => {
-    downloadText('mddl-graph.json', `${JSON.stringify(graph, null, 2)}\n`)
+    downloadText('blueprint-graph.json', `${JSON.stringify(graph, null, 2)}\n`)
   }
 
   const copyYaml = async () => {

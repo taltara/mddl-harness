@@ -7,9 +7,12 @@ Check with `npm view dsh-blueprint version` first.
 Post to <https://github.com/deepseek-ai/deepseek-harness/discussions> under
 Show and tell. Upstream accepts no external PRs, so a Discussion is the channel.
 
-Screenshots to add before posting:
-1. The Blueprint tab showing the phase chips and a health warning.
-2. The studio canvas with the overlay drawer open.
+Screenshots:
+1. `shots/studio-canvas.png` — the canvas, palette, inspector, and overlay
+   drawer. Ready; drop it under the canvas section.
+2. The Blueprint tab in dsh web, showing the phase chips and health list. Needs
+   a live conversation: Add workspace → pick any folder → the tab is in the
+   conversation view ring. Drop it under the opening section.
 
 ---
 
@@ -39,11 +42,23 @@ Cordis loader tree and tells you:
 npx @deepseek-ai/dsh plugin --profile web add dsh-blueprint
 ```
 
-### It also checks an overlay before you apply it
+### And a canvas for building the config in the first place
 
-The other half is a canvas: drag models and tools, wire them into an agent
-loop, and get a real `cordis.patch.yml` out. Two things make it more than a
-YAML pretty-printer.
+The other half is a visual editor. Drag a model and the tools you want out of a
+searchable palette, drop them on the canvas, and wire them into the agent loop.
+The wiring is the configuration — there is no YAML to hand-write and no schema
+to memorize.
+
+It tries to stay out of your way. Press `/` to jump to the palette search,
+which matches on label, row id, package name, and description, so "fs search"
+finds Filesystem Search. Modules already placed carry an *on canvas* badge, and
+a filter hides them. Connections that cannot compile are refused while you drag
+— tools and models only wire *into* an agent loop, and only one model per loop
+— so you cannot draw a graph that fails later. The overlay and its plain-English
+summary recompile under the canvas as you work, and the canvas survives a
+reload.
+
+Two things make it more than a YAML pretty-printer.
 
 **It emits deltas, not a dump.** A catalog tool that stays wired and enabled
 compiles to *nothing*, because it already lives in `dsh-base`. The overlay

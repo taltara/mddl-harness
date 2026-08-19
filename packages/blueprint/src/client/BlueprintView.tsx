@@ -68,7 +68,7 @@ function parseGraph(raw: string): GraphDocument {
     !Array.isArray((parsed as GraphDocument).nodes) ||
     !Array.isArray((parsed as GraphDocument).edges)
   ) {
-    throw new Error('Not a mddl graph: expected version 1 with nodes and edges.')
+    throw new Error('Not a Blueprint graph: expected version 1 with nodes and edges.')
   }
   return parsed as GraphDocument
 }
@@ -102,7 +102,7 @@ export function BlueprintView() {
       <section style={styles.card}>
         <h2 style={styles.heading}>Check an overlay</h2>
         <p style={{ margin: 0 }}>
-          Load a graph exported from mddl studio to see what its overlay would
+          Load a graph exported from the Blueprint canvas to see what its overlay would
           change here, and what it leaves alone.
         </p>
         <p style={{ ...styles.muted, margin: '8px 0 10px' }}>
@@ -112,7 +112,7 @@ export function BlueprintView() {
         <input
           type="file"
           accept="application/json,.json"
-          aria-label="Load a mddl graph"
+          aria-label="Load a Blueprint graph"
           onChange={(event) => {
             void onFile(event.target.files?.[0])
           }}

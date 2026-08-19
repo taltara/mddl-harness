@@ -28,7 +28,7 @@ function EmptyInspector() {
     <div className="space-y-3 text-sm leading-relaxed text-white/60">
       <p>
         This studio is not inside http://127.0.0.1:3080. A host overlay will
-        not add an mddl tab, plugin card, or chat row.
+        not add a Blueprint tab, plugin card, or chat row.
       </p>
       <ul className="list-disc space-y-2 pl-4 text-xs text-white/50">
         <li>

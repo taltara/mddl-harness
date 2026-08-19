@@ -1,7 +1,7 @@
 /**
  * Browser plugin contributing one entry to the conversation view slot. It
  * defines no service and reads no session state — the tab explains what an
- * exported mddl overlay does to this harness.
+ * exported Blueprint overlay does to this harness.
  */
 import type { Context } from '@deepseek-ai/cordis'
 // Type-only: the 'conversation.view' SlotMap row is declared by the slot's

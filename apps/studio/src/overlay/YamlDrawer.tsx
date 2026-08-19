@@ -24,8 +24,8 @@ export function YamlDrawer({ open }: YamlDrawerProps) {
             {summary.applyCommand}
           </p>
           <p className="mt-1 text-[11px] text-white/40">
-            --patch is from your terminal cwd. This file will not add an mddl
-            tab in the DSH UI.
+            --patch is from your terminal cwd. This file will not add a
+            Blueprint tab in the DSH UI.
           </p>
         </div>
         <div className="flex shrink-0 gap-2">

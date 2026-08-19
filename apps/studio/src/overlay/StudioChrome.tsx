@@ -22,7 +22,7 @@ export function StudioChrome({
       <div className="flex items-center gap-3">
         <div>
           <p className="text-[11px] uppercase tracking-[0.22em] text-cyan/80">
-            mddl
+            blueprint
           </p>
           <h1 className="text-sm font-semibold leading-none">
             Visual orchestrator
