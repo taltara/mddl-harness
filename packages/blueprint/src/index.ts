@@ -1,18 +1,41 @@
 /**
- * Host half. Projects the live Cordis loader tree onto a read-only JSON route
- * the Blueprint tab reads, so the tab shows the config this harness actually
- * booted rather than one rebuilt from a file.
+ * Host half. Projects the live Cordis loader tree onto a JSON route the
+ * Blueprint tab reads, so the tab shows the config this harness actually
+ * booted rather than one rebuilt from a file, and writes an overlay back into
+ * the profile's `cordis.patch.yml`.
  *
- * Read-only by construction: this plugin registers no mutating route and never
- * writes config.
+ * Writing is confined to one marker-delimited block. Every other byte of that
+ * file — hand-written rows, comments, `!!js` expressions — is preserved, and
+ * the content written is always compiler output, never text supplied by the
+ * browser.
  */
 
+import {
+  copyFile,
+  mkdir,
+  readdir,
+  readFile,
+  rename,
+  unlink,
+  writeFile,
+} from 'node:fs/promises'
 import type { IncomingMessage, ServerResponse } from 'node:http'
+import { dirname, join } from 'node:path'
 import type { Context } from '@deepseek-ai/cordis'
 // Type-only: these packages declare the ctx.loader and ctx.webServer merges.
 import type {} from '@deepseek-ai/cordis-plugin-loader'
 import type {} from '@deepseek-ai/dsh-host-webserver'
+import { compileGraphToPatch, emitPatchYaml } from '@mddl/compiler'
+import type { GraphDocument } from '@mddl/graph-schema'
 import { type EntryLike, projectEntries } from './live.ts'
+import { composePatchFile, diffLines, revisionOf } from './patchFile.ts'
+import {
+  CSRF_TOKEN,
+  csrfMatches,
+  patchPathFromEntries,
+  previewToken,
+  tokenMatches,
+} from './writeBack.ts'
 
 export const name = 'dsh-blueprint'
 
@@ -20,6 +43,11 @@ export const name = 'dsh-blueprint'
 export const inject = ['loader', 'webServer']
 
 export const LIVE_ROUTE = '/dsh-blueprint/api/live'
+export const PREVIEW_ROUTE = '/dsh-blueprint/api/preview'
+export const APPLY_ROUTE = '/dsh-blueprint/api/apply'
+
+/** Body cap. A patch overlay is kilobytes; anything larger is not one. */
+const MAX_BODY = 512 * 1024
 
 const LOOPBACK = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1', 'localhost'])
 
@@ -73,12 +101,149 @@ function sendJson(res: ServerResponse, status: number, body: unknown): void {
   res.end(payload)
 }
 
+/** Same checks as a read, plus the method and the session secret. */
+export function isLocalWrite(req: {
+  method?: string | undefined
+  headers: Record<string, string | string[] | undefined>
+  socket?: { remoteAddress?: string | undefined } | undefined
+}): boolean {
+  if (req.method !== 'POST') {
+    return false
+  }
+  // Rebuild the fields explicitly rather than spreading: on a real
+  // IncomingMessage `headers` is a prototype getter, so {...req} silently
+  // drops it and every check downstream reads undefined.
+  const asRead = {
+    method: 'GET',
+    headers: req.headers,
+    socket: req.socket,
+  }
+  if (!isLocalRead(asRead)) {
+    return false
+  }
+  return csrfMatches(req.headers['x-blueprint-csrf'])
+}
+
+async function readBody(req: IncomingMessage): Promise<string> {
+  let size = 0
+  const chunks: Buffer[] = []
+  for await (const chunk of req) {
+    const buf = chunk as Buffer
+    size += buf.length
+    if (size > MAX_BODY) {
+      throw new Error('blueprint: request body too large')
+    }
+    chunks.push(buf)
+  }
+  return Buffer.concat(chunks).toString('utf8')
+}
+
+function graphFrom(raw: string): GraphDocument {
+  const parsed: unknown = JSON.parse(raw)
+  const graph = (parsed as { graph?: unknown }).graph
+  if (
+    typeof graph !== 'object' ||
+    graph === null ||
+    (graph as GraphDocument).version !== 1 ||
+    !Array.isArray((graph as GraphDocument).nodes) ||
+    !Array.isArray((graph as GraphDocument).edges)
+  ) {
+    throw new Error('blueprint: expected a version 1 graph')
+  }
+  return graph as GraphDocument
+}
+
 /**
- * Mount the live-tree route.
+ * The rows Blueprint owns, compiled here rather than accepted from the page.
+ * The browser sends a graph; the bytes written are always compiler output.
+ */
+function rowsFor(graph: GraphDocument): string {
+  const ops = compileGraphToPatch(graph)
+  if (ops.length === 0) {
+    return ''
+  }
+  // Only the rows: the summary header belongs to an exported file, not to a
+  // block living inside someone else's config.
+  return emitPatchYaml(ops, {
+    applyCommand: '',
+    webUrl: '',
+    facts: [],
+    attached: false,
+  })
+    .split('\n')
+    .filter((line) => !line.startsWith('#'))
+    .join('\n')
+    .trim()
+}
+
+async function readPatchFile(path: string): Promise<string> {
+  try {
+    return await readFile(path, 'utf8')
+  } catch (cause) {
+    if ((cause as NodeJS.ErrnoException).code === 'ENOENT') {
+      return ''
+    }
+    throw cause
+  }
+}
+
+/** Keep the last 20 backups, newest last by name. */
+async function backup(path: string, source: string): Promise<string> {
+  const dir = join(dirname(path), '.dsh-blueprint', 'backups')
+  await mkdir(dir, { recursive: true })
+  const file = join(dir, `${revisionOf(source)}.yml`)
+  await copyFile(path, file).catch(() => undefined)
+  const kept = (await readdir(dir)).sort()
+  for (const stale of kept.slice(0, Math.max(0, kept.length - 20))) {
+    await unlink(join(dir, stale)).catch(() => undefined)
+  }
+  return file
+}
+
+/**
+ * Write through a temp file in the same directory and rename, so a reader
+ * sees either the old file or the new one and never a half-written config.
+ * The file is re-read immediately before the rename: if it moved since the
+ * preview, the write is abandoned rather than clobbering the other edit.
+ */
+async function atomicWrite(
+  path: string,
+  expected: string,
+  next: string,
+): Promise<void> {
+  const current = await readPatchFile(path)
+  if (revisionOf(current) !== revisionOf(expected)) {
+    throw new Error('blueprint: the patch file changed since the preview')
+  }
+  const temp = `${path}.blueprint-${process.pid}.tmp`
+  await writeFile(temp, next, { encoding: 'utf8', mode: 0o600, flag: 'wx' })
+  await rename(temp, path)
+}
+
+/**
+ * Mount the live-tree route and the write-back pair.
  * @param ctx - host root context.
  */
 export function apply(ctx: Context): void {
-  const handler = (req: IncomingMessage, res: ServerResponse): void => {
+  // Serialize writes: two tabs applying at once must not interleave.
+  let queue: Promise<unknown> = Promise.resolve()
+  const exclusive = <T>(task: () => Promise<T>): Promise<T> => {
+    const run = queue.then(task, task)
+    queue = run.catch(() => undefined)
+    return run
+  }
+
+  const patchPath = (): string => {
+    const path = patchPathFromEntries([
+      ...ctx.loader.entries(),
+    ] as unknown as Parameters<typeof patchPathFromEntries>[0])
+    if (path === undefined) {
+      throw new Error('blueprint: could not locate the profile patch file')
+    }
+    return path
+  }
+
+  const live = (req: IncomingMessage, res: ServerResponse): void => {
     if (!isLocalRead(req)) {
       sendJson(res, 403, { error: 'blueprint: local same-origin reads only' })
       return
@@ -87,7 +252,13 @@ export function apply(ctx: Context): void {
       const entries = projectEntries([
         ...ctx.loader.entries(),
       ] as unknown as EntryLike[])
-      sendJson(res, 200, { entries })
+      let patch: { path: string } | undefined
+      try {
+        patch = { path: patchPath() }
+      } catch {
+        patch = undefined
+      }
+      sendJson(res, 200, { entries, csrf: CSRF_TOKEN, patch })
     } catch (cause) {
       sendJson(res, 500, {
         error: cause instanceof Error ? cause.message : String(cause),
@@ -95,7 +266,97 @@ export function apply(ctx: Context): void {
     }
   }
 
+  const preview = async (
+    req: IncomingMessage,
+    res: ServerResponse,
+  ): Promise<void> => {
+    if (!isLocalWrite(req)) {
+      sendJson(res, 403, { error: 'blueprint: local same-origin writes only' })
+      return
+    }
+    try {
+      const graph = graphFrom(await readBody(req))
+      const path = patchPath()
+      const source = await readPatchFile(path)
+      const candidate = composePatchFile(source, rowsFor(graph))
+      const revision = revisionOf(source)
+      sendJson(res, 200, {
+        path,
+        revision,
+        token: previewToken(revision, candidate),
+        diff: diffLines(source, candidate),
+        unchanged: candidate === source,
+      })
+    } catch (cause) {
+      sendJson(res, 400, {
+        error: cause instanceof Error ? cause.message : String(cause),
+      })
+    }
+  }
+
+  const applyPatch = async (
+    req: IncomingMessage,
+    res: ServerResponse,
+  ): Promise<void> => {
+    if (!isLocalWrite(req)) {
+      sendJson(res, 403, { error: 'blueprint: local same-origin writes only' })
+      return
+    }
+    try {
+      const raw = await readBody(req)
+      const graph = graphFrom(raw)
+      const body = JSON.parse(raw) as { revision?: string; token?: string }
+      const path = patchPath()
+      await exclusive(async () => {
+        const source = await readPatchFile(path)
+        const revision = revisionOf(source)
+        if (body.revision !== revision) {
+          throw Object.assign(
+            new Error('blueprint: the patch file changed since the preview'),
+            { status: 409 },
+          )
+        }
+        const candidate = composePatchFile(source, rowsFor(graph))
+        if (
+          typeof body.token !== 'string' ||
+          !tokenMatches(body.token, revision, candidate)
+        ) {
+          throw Object.assign(
+            new Error('blueprint: preview is stale, review the change again'),
+            { status: 409 },
+          )
+        }
+        const saved = source === '' ? undefined : await backup(path, source)
+        await atomicWrite(path, source, candidate)
+        sendJson(res, 200, {
+          path,
+          backup: saved,
+          revision: revisionOf(candidate),
+        })
+      })
+    } catch (cause) {
+      const status = (cause as { status?: number }).status ?? 400
+      sendJson(res, status, {
+        error: cause instanceof Error ? cause.message : String(cause),
+      })
+    }
+  }
+
   ctx.effect(() =>
-    ctx.webServer.register({ kind: 'exact', path: LIVE_ROUTE, handler }),
+    ctx.webServer.register({ kind: 'exact', path: LIVE_ROUTE, handler: live }),
+  )
+  ctx.effect(() =>
+    ctx.webServer.register({
+      kind: 'exact',
+      path: PREVIEW_ROUTE,
+      handler: preview,
+    }),
+  )
+  ctx.effect(() =>
+    ctx.webServer.register({
+      kind: 'exact',
+      path: APPLY_ROUTE,
+      handler: applyPatch,
+    }),
   )
 }

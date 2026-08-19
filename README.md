@@ -65,16 +65,15 @@ Live harness execution, profile install, or a DSH client slot. "Preview telemetr
 
 ## Roadmap
 
-Shipped in `dsh-blueprint` 0.2.1: reading the live loader tree, and linting the
-config you actually booted (failed entries, entries stuck waiting on a service,
-disabled rows something still requires). Next, in order:
+Shipped in `dsh-blueprint` 0.3.0: reading the live loader tree, linting the
+config you actually booted, and writing an overlay back into the profile's
+`cordis.patch.yml` behind a marker-delimited block that leaves hand-written
+YAML untouched. Next, in order:
 
-1. **Write the overlay back**, behind a marker-delimited block that leaves
-   hand-written YAML untouched: revision check, backup, atomic replace, and
-   verification that the running tree matches before the change is kept.
-2. **Import the live tree onto the canvas**, so you can edit the config you
+1. **Import the live tree onto the canvas**, so you can edit the config you
    have rather than rebuild it.
-3. Map `session/event` onto canvas telemetry, and English/中文 both first class.
+2. Map `session/event` onto canvas telemetry.
+3. English and 中文 both first class.
 
 ## Status
 

@@ -7,7 +7,7 @@ import {
 } from '@mddl/compiler'
 import type { GraphDocument } from '@mddl/graph-schema'
 import { type CSSProperties, useEffect, useState } from 'react'
-import { LIVE_ROUTE } from '../index.ts'
+import { APPLY_ROUTE, LIVE_ROUTE, PREVIEW_ROUTE } from '../index.ts'
 import { lintLive } from '../lintLive.ts'
 import type { LiveEntry } from '../live.ts'
 
@@ -124,7 +124,18 @@ export function BlueprintView() {
         )}
       </section>
 
-      {graph === undefined ? null : <GraphReport graph={graph} />}
+      {graph === undefined ? null : (
+        <>
+          <GraphReport graph={graph} />
+          {live.status === 'ready' && live.csrf !== undefined ? (
+            <ApplyPanel
+              graph={graph}
+              csrf={live.csrf}
+              patchPath={live.patchPath}
+            />
+          ) : null}
+        </>
+      )}
     </div>
   )
 }
@@ -132,7 +143,12 @@ export function BlueprintView() {
 type LiveState =
   | { status: 'loading' }
   | { status: 'error'; message: string }
-  | { status: 'ready'; entries: LiveEntry[] }
+  | {
+      status: 'ready'
+      entries: LiveEntry[]
+      csrf?: string
+      patchPath?: string
+    }
 
 /** Read the running loader tree from the host half. */
 function useLiveTree(): LiveState {
@@ -148,9 +164,18 @@ function useLiveTree(): LiveState {
         if (!response.ok) {
           throw new Error(`host route returned ${response.status}`)
         }
-        const body = (await response.json()) as { entries?: LiveEntry[] }
+        const body = (await response.json()) as {
+          entries?: LiveEntry[]
+          csrf?: string
+          patch?: { path?: string }
+        }
         if (!cancelled) {
-          setState({ status: 'ready', entries: body.entries ?? [] })
+          setState({
+            status: 'ready',
+            entries: body.entries ?? [],
+            csrf: body.csrf,
+            patchPath: body.patch?.path,
+          })
         }
       } catch (cause) {
         if (!cancelled) {
@@ -384,4 +409,177 @@ function GraphReport({ graph }: { graph: GraphDocument }) {
       </section>
     </>
   )
+}
+
+type ApplyState =
+  | { status: 'idle' }
+  | { status: 'busy' }
+  | {
+      status: 'previewed'
+      revision: string
+      token: string
+      diff: { kind: 'same' | 'add' | 'remove'; text: string }[]
+      unchanged: boolean
+    }
+  | { status: 'done'; backup?: string }
+  | { status: 'error'; message: string }
+
+const DIFF_COLOR: Record<string, string> = {
+  add: FACT_COLOR.change,
+  remove: WARNING_COLOR.error,
+  same: '#7a8699',
+}
+
+/**
+ * Preview, then confirm. The token returned by the preview is required by the
+ * apply, so the bytes written are the bytes that were on screen.
+ */
+function ApplyPanel({
+  graph,
+  csrf,
+  patchPath,
+}: {
+  graph: GraphDocument
+  csrf: string
+  patchPath?: string
+}) {
+  const [state, setState] = useState<ApplyState>({ status: 'idle' })
+
+  const post = async (route: string, body: unknown) => {
+    const response = await fetch(route, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-blueprint-csrf': csrf,
+      },
+      body: JSON.stringify(body),
+    })
+    const parsed = await response.json()
+    if (!response.ok) {
+      throw new Error(parsed?.error ?? `host returned ${response.status}`)
+    }
+    return parsed
+  }
+
+  const preview = async () => {
+    setState({ status: 'busy' })
+    try {
+      const body = await post(PREVIEW_ROUTE, { graph })
+      setState({
+        status: 'previewed',
+        revision: body.revision,
+        token: body.token,
+        diff: body.diff ?? [],
+        unchanged: body.unchanged === true,
+      })
+    } catch (cause) {
+      setState({
+        status: 'error',
+        message: cause instanceof Error ? cause.message : String(cause),
+      })
+    }
+  }
+
+  const confirm = async (revision: string, token: string) => {
+    setState({ status: 'busy' })
+    try {
+      const body = await post(APPLY_ROUTE, { graph, revision, token })
+      setState({ status: 'done', backup: body.backup })
+    } catch (cause) {
+      setState({
+        status: 'error',
+        message: cause instanceof Error ? cause.message : String(cause),
+      })
+    }
+  }
+
+  return (
+    <section style={styles.card}>
+      <h2 style={styles.heading}>Apply to this profile</h2>
+      <p style={{ ...styles.muted, margin: '0 0 10px', fontSize: 12 }}>
+        Writes only Blueprint's own block in{' '}
+        <code>{patchPath ?? 'cordis.patch.yml'}</code>. Anything you wrote by
+        hand in that file is left exactly as it is, and the previous file is
+        backed up first. Restart the harness for the change to take effect.
+      </p>
+
+      {state.status === 'idle' || state.status === 'error' ? (
+        <button
+          type="button"
+          onClick={() => void preview()}
+          style={buttonStyle}
+        >
+          Preview the change
+        </button>
+      ) : null}
+
+      {state.status === 'busy' ? (
+        <p style={{ ...styles.muted, margin: 0 }}>Working…</p>
+      ) : null}
+
+      {state.status === 'previewed' ? (
+        <>
+          {state.unchanged ? (
+            <p style={{ color: FACT_COLOR.keep, margin: '0 0 10px' }}>
+              Nothing to change — the file already says this.
+            </p>
+          ) : (
+            <pre style={{ ...styles.pre, marginBottom: 10 }}>
+              {state.diff.map((row, index) => (
+                <div
+                  // biome-ignore lint/suspicious/noArrayIndexKey: diff rows are positional and never reordered
+                  key={index}
+                  style={{ color: DIFF_COLOR[row.kind] }}
+                >
+                  {row.kind === 'add' ? '+' : row.kind === 'remove' ? '-' : ' '}
+                  {row.text}
+                </div>
+              ))}
+            </pre>
+          )}
+          {state.unchanged ? null : (
+            <button
+              type="button"
+              onClick={() => void confirm(state.revision, state.token)}
+              style={buttonStyle}
+            >
+              Write it
+            </button>
+          )}{' '}
+          <button
+            type="button"
+            onClick={() => setState({ status: 'idle' })}
+            style={buttonStyle}
+          >
+            Cancel
+          </button>
+        </>
+      ) : null}
+
+      {state.status === 'done' ? (
+        <p style={{ color: FACT_COLOR.change, margin: 0 }}>
+          Written. Restart the harness to load it.
+          {state.backup === undefined
+            ? ''
+            : ` Previous file backed up to ${state.backup}.`}
+        </p>
+      ) : null}
+
+      {state.status === 'error' ? (
+        <p style={{ color: WARNING_COLOR.error, margin: '10px 0 0' }}>
+          {state.message}
+        </p>
+      ) : null}
+    </section>
+  )
+}
+
+const buttonStyle: CSSProperties = {
+  background: 'transparent',
+  border: '1px solid rgba(127,140,160,0.4)',
+  borderRadius: 6,
+  color: 'inherit',
+  cursor: 'pointer',
+  font: 'inherit',
+  padding: '4px 12px',
 }
