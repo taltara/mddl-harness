@@ -4,6 +4,11 @@ import { emitPatchYaml } from './emitYaml.ts'
 import { summarizeGraph } from './summarizeGraph.ts'
 
 export { compileGraphToPatch } from './compileGraphToPatch.ts'
+export {
+  compileGraphToPreset,
+  compilePresetManifest,
+  isPresetId,
+} from './compileGraphToPreset.ts'
 export { emitPatchYaml } from './emitYaml.ts'
 export type {
   OverlayWarning,

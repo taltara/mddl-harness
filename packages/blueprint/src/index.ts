@@ -16,6 +16,7 @@ import {
   readdir,
   readFile,
   rename,
+  rm,
   stat,
   unlink,
   writeFile,
@@ -26,11 +27,21 @@ import type { Context } from '@deepseek-ai/cordis'
 // Type-only: these packages declare the ctx.loader and ctx.webServer merges.
 import type {} from '@deepseek-ai/cordis-plugin-loader'
 import type {} from '@deepseek-ai/dsh-host-webserver'
-import { compileGraphToPatch, emitPatchYaml } from '@mddl/compiler'
+import {
+  compileGraphToPatch,
+  compileGraphToPreset,
+  compilePresetManifest,
+  emitPatchYaml,
+  isPresetId,
+} from '@mddl/compiler'
 import type { GraphDocument } from '@mddl/graph-schema'
 import { type EntryLike, projectEntries } from './live.ts'
 import { composePatchFile, diffLines, revisionOf } from './patchFile.ts'
-import { type PreflightFinding, preflightOps } from './preflight.ts'
+import {
+  type PreflightFinding,
+  preflightOps,
+  presetProblem,
+} from './preflight.ts'
 import {
   CSRF_TOKEN,
   csrfMatches,
@@ -41,7 +52,14 @@ import {
 
 export const name = 'dsh-blueprint'
 
-/** Required services: the loader tree to read, and the server to answer on. */
+/**
+ * Required services: the loader tree to read, and the server to answer on.
+ *
+ * Kept to a plain array on purpose. The object form was read as two service
+ * names, "required" and "optional", so the entry never activated and the whole
+ * harness refused to boot. Nothing this plugin offers is worth making the
+ * harness depend on a service it might not have.
+ */
 export const inject = ['loader', 'webServer']
 
 export const LIVE_ROUTE = '/dsh-blueprint/api/live'
@@ -49,6 +67,7 @@ export const PREVIEW_ROUTE = '/dsh-blueprint/api/preview'
 export const APPLY_ROUTE = '/dsh-blueprint/api/apply'
 export const BACKUPS_ROUTE = '/dsh-blueprint/api/backups'
 export const RESTORE_ROUTE = '/dsh-blueprint/api/restore'
+export const PRESET_ROUTE = '/dsh-blueprint/api/preset'
 
 /** Body cap. A patch overlay is kilobytes; anything larger is not one. */
 const MAX_BODY = 512 * 1024
@@ -259,6 +278,20 @@ async function atomicWrite(
  * @param ctx - host root context.
  */
 export function apply(ctx: Context): void {
+  /** Where user presets live, per dsh-agent-presets. */
+  const USER_PRESET_DIR = '.agent-presets'
+
+  const dshHome = (): string => {
+    // The profile sits at $DSH_HOME/profiles/<name>, so two levels up is home.
+    const path = patchPathFromEntries([
+      ...ctx.loader.entries(),
+    ] as unknown as Parameters<typeof patchPathFromEntries>[0])
+    if (path === undefined) {
+      throw new Error('blueprint: could not locate the harness home')
+    }
+    return dirname(dirname(dirname(path)))
+  }
+
   // Serialize writes: two tabs applying at once must not interleave.
   let queue: Promise<unknown> = Promise.resolve()
   const exclusive = <T>(task: () => Promise<T>): Promise<T> => {
@@ -453,8 +486,82 @@ export function apply(ctx: Context): void {
     }
   }
 
+  /**
+   * Write an agent preset, then ask the harness whether it accepted it.
+   *
+   * Preset discovery is unmemoized, so a preset written here is live without a
+   * restart — which also means a broken one is live immediately. The harness
+   * reports a broken preset with a reason rather than skipping it, so the
+   * write is checked and rolled back rather than left for the user to find in
+   * a session picker.
+   */
+  const writePreset = async (
+    req: IncomingMessage,
+    res: ServerResponse,
+  ): Promise<void> => {
+    if (!isLocalWrite(req)) {
+      sendJson(res, 403, { error: 'blueprint: local same-origin writes only' })
+      return
+    }
+    try {
+      const raw = await readBody(req)
+      const graph = graphFrom(raw)
+      const body = JSON.parse(raw) as { id?: string; description?: string }
+      const id = body.id ?? ''
+      if (!isPresetId(id)) {
+        throw new Error(
+          'blueprint: a preset id must match [a-z0-9][a-z0-9-]* or discovery skips it',
+        )
+      }
+      const dir = join(dshHome(), USER_PRESET_DIR, id)
+      await exclusive(async () => {
+        const composition = join(dir, 'agent.cordis.yml')
+        const previous = await readPatchFile(composition)
+        await mkdir(dir, { recursive: true })
+        await writeFile(composition, compileGraphToPreset(graph), 'utf8')
+        await writeFile(
+          join(dir, 'preset.yml'),
+          compilePresetManifest(
+            id,
+            body.description ?? 'Compiled by mddl blueprint',
+          ),
+          'utf8',
+        )
+        const health = presetProblem(compileGraphToPreset(graph))
+        if (health !== undefined) {
+          // Put back what was there rather than leaving a broken preset in
+          // the picker.
+          if (previous === '') {
+            await rm(dir, { recursive: true, force: true })
+          } else {
+            await writeFile(composition, previous, 'utf8')
+          }
+          throw Object.assign(
+            new Error(
+              `blueprint: the harness rejected that preset — ${health}`,
+            ),
+            { status: 422 },
+          )
+        }
+        sendJson(res, 200, { id, path: composition })
+      })
+    } catch (cause) {
+      const status = (cause as { status?: number }).status ?? 400
+      sendJson(res, status, {
+        error: cause instanceof Error ? cause.message : String(cause),
+      })
+    }
+  }
+
   ctx.effect(() =>
     ctx.webServer.register({ kind: 'exact', path: LIVE_ROUTE, handler: live }),
+  )
+  ctx.effect(() =>
+    ctx.webServer.register({
+      kind: 'exact',
+      path: PRESET_ROUTE,
+      handler: writePreset,
+    }),
   )
   ctx.effect(() =>
     ctx.webServer.register({

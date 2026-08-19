@@ -105,3 +105,28 @@ export async function preflightOps(
 
   return findings
 }
+
+/**
+ * Why the harness would call a preset composition broken, or undefined when it
+ * looks loadable.
+ *
+ * Discovery treats a preset whose composition is missing or is not a list of
+ * named plugin rows as broken, and it is unmemoized — a bad preset is visible
+ * in the picker immediately. Checking our own output is enough here, because
+ * the composition is compiler-generated rather than user text.
+ */
+export function presetProblem(composition: string): string | undefined {
+  const rows = composition
+    .split('\n')
+    .filter((line) => line.startsWith('- id:'))
+  if (rows.length === 0) {
+    return 'the composition has no plugin rows, so the preset would list as broken'
+  }
+  const named = composition
+    .split('\n')
+    .filter((line) => line.trimStart().startsWith('name:'))
+  if (named.length < rows.length) {
+    return 'every row needs a name, or the preset lists as broken'
+  }
+  return undefined
+}

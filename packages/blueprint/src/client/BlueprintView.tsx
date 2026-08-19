@@ -7,10 +7,12 @@ import {
 } from '@mddl/compiler'
 import type { GraphDocument } from '@mddl/graph-schema'
 import { type CSSProperties, useCallback, useEffect, useState } from 'react'
+import { graphFromLive } from '../graphFromLive.ts'
 import {
   APPLY_ROUTE,
   BACKUPS_ROUTE,
   LIVE_ROUTE,
+  PRESET_ROUTE,
   PREVIEW_ROUTE,
   RESTORE_ROUTE,
 } from '../index.ts'
@@ -129,6 +131,10 @@ export function BlueprintView() {
           <p style={{ color: WARNING_COLOR.error, marginBottom: 0 }}>{error}</p>
         )}
       </section>
+
+      {live.status === 'ready' && live.csrf !== undefined ? (
+        <HarnessActions entries={live.entries} csrf={live.csrf} />
+      ) : null}
 
       {live.status === 'ready' && live.csrf !== undefined ? (
         <SnapshotsPanel csrf={live.csrf} />
@@ -693,6 +699,98 @@ function SnapshotsPanel({ csrf }: { csrf: string }) {
           </li>
         ))}
       </ul>
+      {note === undefined ? null : (
+        <p style={{ ...styles.muted, margin: '10px 0 0' }}>{note}</p>
+      )}
+    </section>
+  )
+}
+
+/** Take the running config to the canvas, or turn the canvas into a preset. */
+function HarnessActions({
+  entries,
+  csrf,
+}: {
+  entries: LiveEntry[]
+  csrf: string
+}) {
+  const [presetId, setPresetId] = useState('my-preset')
+  const [note, setNote] = useState<string | undefined>(undefined)
+
+  const download = () => {
+    const { graph, skipped } = graphFromLive(entries)
+    const blob = new Blob([`${JSON.stringify(graph, null, 2)}\n`], {
+      type: 'application/json',
+    })
+    const url = URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.download = 'blueprint-graph.json'
+    anchor.click()
+    URL.revokeObjectURL(url)
+    setNote(
+      skipped.length === 0
+        ? 'Downloaded. Open it in the Blueprint canvas.'
+        : `Downloaded. ${skipped.length} rows the canvas does not model were left out, including ${skipped.slice(0, 3).join(', ')}.`,
+    )
+  }
+
+  const savePreset = async () => {
+    setNote('Saving…')
+    try {
+      const { graph } = graphFromLive(entries)
+      const response = await fetch(PRESET_ROUTE, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-blueprint-csrf': csrf,
+        },
+        body: JSON.stringify({ graph, id: presetId }),
+      })
+      const body = await response.json()
+      if (!response.ok) {
+        throw new Error(body?.error ?? `host returned ${response.status}`)
+      }
+      setNote(
+        `Saved as "${body.id}". Presets are re-read on every use, so it is selectable now — no restart.`,
+      )
+    } catch (cause) {
+      setNote(cause instanceof Error ? cause.message : String(cause))
+    }
+  }
+
+  return (
+    <section style={styles.card}>
+      <h2 style={styles.heading}>Take it further</h2>
+      <p style={{ ...styles.muted, margin: '0 0 10px', fontSize: 12 }}>
+        A host overlay sets the model and the host plane. The tools a session
+        actually gets come from its agent preset, so saving one is how the
+        canvas changes what you experience in Chat.
+      </p>
+      <button type="button" onClick={download} style={buttonStyle}>
+        Download this harness as a graph
+      </button>{' '}
+      <input
+        value={presetId}
+        onChange={(event) => setPresetId(event.target.value)}
+        aria-label="Preset id"
+        style={{
+          background: 'transparent',
+          border: '1px solid rgba(127,140,160,0.4)',
+          borderRadius: 6,
+          color: 'inherit',
+          font: 'inherit',
+          padding: '4px 8px',
+          width: 130,
+        }}
+      />{' '}
+      <button
+        type="button"
+        onClick={() => void savePreset()}
+        style={buttonStyle}
+      >
+        Save as preset
+      </button>
       {note === undefined ? null : (
         <p style={{ ...styles.muted, margin: '10px 0 0' }}>{note}</p>
       )}

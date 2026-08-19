@@ -6,8 +6,17 @@ interface YamlDrawerProps {
 }
 
 export function YamlDrawer({ open }: YamlDrawerProps) {
-  const { yaml, summary, warnings, copied, copyYaml, copyApply, exportGraph } =
-    useYamlDrawer()
+  const {
+    yaml,
+    summary,
+    warnings,
+    copied,
+    copyYaml,
+    copyApply,
+    exportGraph,
+    importGraph,
+    importError,
+  } = useYamlDrawer()
 
   if (!open) {
     return null
@@ -29,6 +38,18 @@ export function YamlDrawer({ open }: YamlDrawerProps) {
           </p>
         </div>
         <div className="flex shrink-0 gap-2">
+          <label className="cursor-pointer rounded-md border border-white/10 px-2 py-1 text-xs text-white/70 transition-colors hover:border-white/25">
+            Import graph
+            <input
+              type="file"
+              accept="application/json,.json"
+              className="hidden"
+              onChange={(event) => {
+                void importGraph(event.target.files?.[0])
+                event.target.value = ''
+              }}
+            />
+          </label>
           <SmallButton onClick={exportGraph}>Export graph</SmallButton>
           <SmallButton
             onClick={() => {
@@ -46,6 +67,11 @@ export function YamlDrawer({ open }: YamlDrawerProps) {
           </SmallButton>
         </div>
       </div>
+      {importError === undefined ? null : (
+        <p className="border-t border-white/8 px-4 py-2 text-[11px] text-rose-400">
+          Could not import that file: {importError}
+        </p>
+      )}
       {warnings.length === 0 ? null : (
         <ul className="space-y-1 border-t border-white/8 px-4 py-2">
           {warnings.map((warning) => (

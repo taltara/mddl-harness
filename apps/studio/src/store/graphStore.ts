@@ -54,6 +54,7 @@ interface GraphState {
   addNode: (node: OrchestratorNode) => void
   patchNodeData: (id: string, patch: Partial<OrchestratorNodeData>) => void
   resetGraph: () => void
+  loadGraph: (graph: GraphDocument) => void
 }
 
 const initialGraph = loadGraphDocument()
@@ -106,6 +107,9 @@ export const useGraphStore = create<GraphState>((set, get) => ({
       nodes: toFlowNodes(starterGraph),
       edges: toFlowEdges(starterGraph),
     })
+  },
+  loadGraph: (graph) => {
+    set({ nodes: toFlowNodes(graph), edges: toFlowEdges(graph) })
   },
 }))
 

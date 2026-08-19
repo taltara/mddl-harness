@@ -1,4 +1,5 @@
 import { compileGraphToYaml, lintGraph, summarizeGraph } from '@mddl/compiler'
+import type { GraphDocument } from '@mddl/graph-schema'
 import { useMemo, useState } from 'react'
 import { copyText, downloadText } from '../lib/downloadText.ts'
 import { toGraphDocument } from '../lib/toGraphDocument.ts'
@@ -8,6 +9,8 @@ export function useYamlDrawer() {
   const nodes = useGraphStore((state) => state.nodes)
   const edges = useGraphStore((state) => state.edges)
   const [copied, setCopied] = useState<'yaml' | 'apply' | undefined>(undefined)
+  const [importError, setImportError] = useState<string | undefined>(undefined)
+  const loadGraph = useGraphStore((state) => state.loadGraph)
 
   const graph = useMemo(() => toGraphDocument(nodes, edges), [edges, nodes])
   const yaml = useMemo(() => compileGraphToYaml(graph), [graph])
@@ -21,6 +24,31 @@ export function useYamlDrawer() {
 
   const exportYaml = () => {
     downloadText('cordis.patch.yml', yaml)
+  }
+
+  /**
+   * Read a graph back in — exported from here, or downloaded from the
+   * Blueprint tab, which is how you edit the config a harness is running
+   * rather than rebuilding it by hand.
+   */
+  const importGraph = async (file: File | undefined) => {
+    if (file === undefined) {
+      return
+    }
+    try {
+      const parsed = JSON.parse(await file.text()) as GraphDocument
+      if (
+        parsed.version !== 1 ||
+        !Array.isArray(parsed.nodes) ||
+        !Array.isArray(parsed.edges)
+      ) {
+        throw new Error('expected a version 1 graph with nodes and edges')
+      }
+      loadGraph(parsed)
+      setImportError(undefined)
+    } catch (cause) {
+      setImportError(cause instanceof Error ? cause.message : String(cause))
+    }
   }
 
   // The graph, not the overlay: this is what the DSH Blueprint tab loads.
@@ -45,6 +73,8 @@ export function useYamlDrawer() {
     copied,
     exportYaml,
     exportGraph,
+    importGraph,
+    importError,
     copyYaml,
     copyApply,
   }
