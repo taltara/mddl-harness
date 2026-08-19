@@ -6,6 +6,11 @@ import { summarizeGraph } from './summarizeGraph.ts'
 export type { CordisPatchOp, CordisRow } from './types.ts'
 export { isInsertOp } from './types.ts'
 export { compileGraphToPatch } from './compileGraphToPatch.ts'
+export type {
+  OverlayWarning,
+  OverlayWarningLevel,
+} from './lintGraph.ts'
+export { OVERLAY_WARNING_LEVELS, lintGraph } from './lintGraph.ts'
 export { emitPatchYaml } from './emitYaml.ts'
 export {
   DSH_APPLY_COMMAND,

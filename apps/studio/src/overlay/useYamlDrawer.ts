@@ -1,4 +1,4 @@
-import { compileGraphToYaml, summarizeGraph } from '@mddl/compiler'
+import { compileGraphToYaml, lintGraph, summarizeGraph } from '@mddl/compiler'
 import { useMemo, useState } from 'react'
 import { copyText, downloadText } from '../lib/downloadText.ts'
 import { toGraphDocument } from '../lib/toGraphDocument.ts'
@@ -15,6 +15,7 @@ export function useYamlDrawer() {
   )
   const yaml = useMemo(() => compileGraphToYaml(graph), [graph])
   const summary = useMemo(() => summarizeGraph(graph), [graph])
+  const warnings = useMemo(() => lintGraph(graph), [graph])
 
   const flash = (which: 'yaml' | 'apply') => {
     setCopied(which)
@@ -23,6 +24,11 @@ export function useYamlDrawer() {
 
   const exportYaml = () => {
     downloadText('cordis.patch.yml', yaml)
+  }
+
+  // The graph, not the overlay: this is what the DSH Harness Map tab loads.
+  const exportGraph = () => {
+    downloadText('mddl-graph.json', `${JSON.stringify(graph, null, 2)}\n`)
   }
 
   const copyYaml = async () => {
@@ -35,5 +41,14 @@ export function useYamlDrawer() {
     flash('apply')
   }
 
-  return { yaml, summary, copied, exportYaml, copyYaml, copyApply }
+  return {
+    yaml,
+    summary,
+    warnings,
+    copied,
+    exportYaml,
+    exportGraph,
+    copyYaml,
+    copyApply,
+  }
 }

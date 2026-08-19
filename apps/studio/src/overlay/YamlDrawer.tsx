@@ -6,7 +6,8 @@ interface YamlDrawerProps {
 }
 
 export function YamlDrawer({ open }: YamlDrawerProps) {
-  const { yaml, summary, copied, copyYaml, copyApply } = useYamlDrawer()
+  const { yaml, summary, warnings, copied, copyYaml, copyApply, exportGraph } =
+    useYamlDrawer()
 
   if (!open) {
     return null
@@ -28,6 +29,7 @@ export function YamlDrawer({ open }: YamlDrawerProps) {
           </p>
         </div>
         <div className="flex shrink-0 gap-2">
+          <SmallButton onClick={exportGraph}>Export graph</SmallButton>
           <SmallButton
             onClick={() => {
               void copyApply()
@@ -44,6 +46,21 @@ export function YamlDrawer({ open }: YamlDrawerProps) {
           </SmallButton>
         </div>
       </div>
+      {warnings.length === 0 ? null : (
+        <ul className="space-y-1 border-t border-white/8 px-4 py-2">
+          {warnings.map((warning) => (
+            <li
+              key={warning.code}
+              className={`flex gap-2 text-[11px] ${
+                warning.level === 'error' ? 'text-rose-400' : 'text-amber'
+              }`}
+            >
+              <span aria-hidden>{warning.level === 'error' ? '✕' : '!'}</span>
+              <span>{warning.text}</span>
+            </li>
+          ))}
+        </ul>
+      )}
       <OverlayFactList facts={summary.facts} />
       <pre className="max-h-36 overflow-auto border-t border-white/8 px-4 py-3 font-mono text-[11px] leading-relaxed text-cyan/90">
         {yaml}

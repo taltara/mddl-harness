@@ -17,8 +17,9 @@ This is **not** a fork of `dsh` and **not** a child-process wrapper around `npx 
 ## Packages
 
 - `@mddl/graph-schema` — graph IR and the shipped DSH row catalog
-- `@mddl/compiler` — graph → Cordis patch YAML
+- `@mddl/compiler` — graph → Cordis patch YAML, plus overlay linting
 - `@mddl/studio` — visual editor
+- `@mddl/dsh-plugin` — **Harness Map** tab inside the DSH web client ([readme](packages/dsh-plugin/README.md))
 
 ## Run
 
