@@ -211,9 +211,7 @@ function LiveReport({ live }: { live: LiveState }) {
         </p>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           {[...byPhase.entries()].sort().map(([phase, count]) => (
-            <span key={phase} style={phaseChip(phase)}>
-              {phase} {count}
-            </span>
+            <PhaseChip key={phase} phase={phase} count={count} />
           ))}
         </div>
         {secretCount === 0 ? null : (
@@ -257,7 +255,7 @@ function LiveReport({ live }: { live: LiveState }) {
                 <li key={entry.id}>
                   <strong>{entry.id}</strong>{' '}
                   <span style={styles.muted}>{entry.name}</span>{' '}
-                  <span style={phaseChip(entry.phase)}>{entry.phase}</span>
+                  <PhaseBadge phase={entry.phase} />
                   {entry.inject.length === 0 ? null : (
                     <div style={{ ...styles.muted, fontSize: 12 }}>
                       requires {entry.inject.join(', ')}
@@ -272,23 +270,70 @@ function LiveReport({ live }: { live: LiveState }) {
   )
 }
 
-function phaseChip(phase: string): CSSProperties {
-  const color =
-    phase === 'failed'
-      ? WARNING_COLOR.error
-      : phase === 'pending'
-        ? WARNING_COLOR.warning
-        : phase === 'active'
-          ? FACT_COLOR.change
-          : FACT_COLOR.keep
-  return {
-    border: `1px solid ${color}`,
-    borderRadius: 999,
-    color,
-    fontSize: 11,
-    padding: '1px 8px',
-    whiteSpace: 'nowrap',
+/**
+ * Green runs, red failed, amber waiting, grey deliberately off. Disabled is a
+ * choice rather than a fault, so it never takes an alarm colour.
+ */
+function phaseColor(phase: string): string {
+  if (phase === 'failed') {
+    return WARNING_COLOR.error
   }
+  if (phase === 'pending' || phase === 'loading') {
+    return WARNING_COLOR.warning
+  }
+  if (phase === 'active') {
+    return FACT_COLOR.change
+  }
+  return FACT_COLOR.keep
+}
+
+const chipShell: CSSProperties = {
+  alignItems: 'center',
+  border: '1px solid rgba(127,140,160,0.3)',
+  borderRadius: 999,
+  display: 'inline-flex',
+  gap: 6,
+  fontSize: 12,
+  padding: '2px 10px',
+  whiteSpace: 'nowrap',
+}
+
+/** Count with a status dot. The phase name stays available as a tooltip. */
+function PhaseChip({ phase, count }: { phase: string; count: number }) {
+  return (
+    <span style={chipShell} title={phase} aria-label={`${count} ${phase}`}>
+      <span
+        aria-hidden
+        style={{
+          background: phaseColor(phase),
+          borderRadius: 999,
+          display: 'inline-block',
+          height: 8,
+          width: 8,
+        }}
+      />
+      {count}
+    </span>
+  )
+}
+
+/** Per-entry badge, where the phase word is the point. */
+function PhaseBadge({ phase }: { phase: string }) {
+  const color = phaseColor(phase)
+  return (
+    <span
+      style={{
+        border: `1px solid ${color}`,
+        borderRadius: 999,
+        color,
+        fontSize: 11,
+        padding: '1px 8px',
+        whiteSpace: 'nowrap',
+      }}
+    >
+      {phase}
+    </span>
+  )
 }
 
 function GraphReport({ graph }: { graph: GraphDocument }) {
