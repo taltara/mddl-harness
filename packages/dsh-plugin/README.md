@@ -38,11 +38,36 @@ Dual entry, matching the shipped `ui-trajectory` plugin:
   executes. Registers one entry in the session-scoped `conversation.view`
   slot ring.
 
+Plus `cordis.patch.yml`, declared as `dsh.bundle.patch`. **A third-party plugin
+needs this to become a profile layer** — `dsh.client` alone installs it as a
+plain dependency, and `dsh plugin add` says so:
+
+```
+warning: @mddl/dsh-plugin declares no dsh.bundle — installed as a plain
+dependency, not a profile layer
+```
+
+The in-repo UI plugins do not need one, because the `dsh-web-app` bundle
+already inserts their rows. A package outside the repo inserts its own.
+
 The client bundle requires only `react` and `react/jsx-runtime` from the
 shell's module table; `@mddl/compiler` and `@mddl/graph-schema` are inlined.
 
-Verified against `@deepseek-ai/dsh` `0.1.0-rc.7` / client packages
-`0.1.0-rc.8`. DSH is a developer preview and its plugin API is still moving.
+## Verified against a real harness
+
+On `@deepseek-ai/dsh` `0.1.0-rc.7` (client packages `0.1.0-rc.8`), installed
+into a real web profile:
+
+- `dsh plugin --profile web add` appends the package to the profile's
+  `dsh.profile.bundles`.
+- `dsh --profile web --dump-config` shows the composed row:
+  `- id: mddl-harness-map / name: '@mddl/dsh-plugin'`.
+- `dsh web` serves `/plugins/@mddl/dsh-plugin/client.js` and lists the plugin
+  in the browser boot roster beside `ui-trajectory`, with no console errors.
+
+Rendering the tab needs a live conversation, which needs a workspace and a
+provider key, so that last step is yours to eyeball. DSH is a developer
+preview and its plugin API is still moving.
 
 ## Build
 

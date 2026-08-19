@@ -53,6 +53,10 @@ Rejected from the research PDF: Next.js, Socket.io bridge, `dsh.yaml`, Framer on
 - Client plugin contract (verified against real source, `0.1.0-rc.8`): `dsh.client` = `{ inject: [...], platform: 'web' }`; host half `lib/index.js` (browser-only plugins export a no-op `apply`), client half `lib/client.js`.
 - Tab registration: `ctx.slots.inject('conversation.view', () => ctx.slots.register({ name, id, order, locale, label, inject }, Component))`. `conversation.view` is `kind: 'list'`, `scope: 'session'`.
 - Client bundle is a closure factory: `window.__ModuleLoader__.load({ id, factory: (require) => ... })`, CJS/browser, `entryFileNames: client.js`. Runtime module table is only `react`, `react/jsx-runtime`, `react-dom`, `react-dom/client`, `@deepseek-ai/cordis`, `dsh-client-ui-slots`, `dsh-client-ui-primitives`, plus preloaded `dsh-client-runtime/client`. Everything else must inline or be type-only.
+- **A third-party plugin needs `dsh.bundle.patch` to become a profile layer.** `dsh.client` alone installs it as a plain dependency (the CLI warns). In-repo UI plugins skip it because `dsh-web-app`'s bundle already inserts their rows; an external package inserts its own via `- insert: [{id, name}]`. `dsh plugin add` then appends the package to the profile's `dsh.profile.bundles`.
+- Profile layout: `$DSH_HOME/profiles/web/{package.json,cordis.yml,cordis.patch.yml}`. `cordis.yml` is an empty `[]` — the tree is composed from `dsh.profile.bundles`, then the profile patch, then `--patch`.
+- `dsh plugin add` needs `-w` at the profile workspace root (upstream #3405).
+- Verified end to end on rc.7: our row composes, `/plugins/@mddl/dsh-plugin/client.js` serves, and the plugin appears in `window.__DSH_BOOT__` beside ui-trajectory. Rendering the tab needs a workspace + provider key.
 
 ## Next phases
 

@@ -1,0 +1,10 @@
+# The @mddl/dsh-plugin bundle patch: adds the Harness Map to a profile's
+# browser roster. Applied as its own layer after the profile's bundles, with
+# the profile's cordis.patch.yml and any --patch overlays still to come.
+#
+# A `dsh.client` row is part of the browser roster the modules node half scans
+# into window.__DSH_BOOT__, so one row carries both halves of this package.
+
+- insert:
+    - id: mddl-harness-map
+      name: '@mddl/dsh-plugin'
