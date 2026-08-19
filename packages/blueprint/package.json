@@ -1,6 +1,6 @@
 {
   "name": "dsh-blueprint",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Read the config your harness actually booted, and validate an overlay before you apply it. A Blueprint tab for the DSH web client.",
   "keywords": [
     "dsh-plugin",
