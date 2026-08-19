@@ -61,18 +61,16 @@ Live harness execution, profile install, or a DSH client slot. "Preview telemetr
 
 ## Roadmap
 
-Today the studio composes a graph and compiles it; the overlay is applied by
-you, with `--patch`. Next, in order:
+Shipped in `dsh-blueprint` 0.2.0: reading the live loader tree, and linting the
+config you actually booted (failed entries, entries stuck waiting on a service,
+disabled rows something still requires). Next, in order:
 
-1. **Read the live tree.** Project `ctx.loader.entries()` into a graph, so you
-   see the config you actually booted — including entries that failed — rather
-   than one you rebuilt by hand.
-2. **Write the overlay back**, behind a marker-delimited block that leaves
+1. **Write the overlay back**, behind a marker-delimited block that leaves
    hand-written YAML untouched: revision check, backup, atomic replace, and
    verification that the running tree matches before the change is kept.
-3. **Dependency-aware linting.** Warn when a change disables a service another
-   row injects, and keep growing the rules from real breakage.
-4. Map `session/event` onto canvas telemetry, and English/中文 both first class.
+2. **Import the live tree onto the canvas**, so you can edit the config you
+   have rather than rebuild it.
+3. Map `session/event` onto canvas telemetry, and English/中文 both first class.
 
 ## Status
 
