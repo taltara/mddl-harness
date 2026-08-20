@@ -64,6 +64,26 @@ npx @deepseek-ai/dsh web --patch "$PWD/examples/cordis.patch.yml"
 
 Live harness execution, profile install, or a DSH client slot. "Preview telemetry" is a local animation that proves the glow/edge path. Real run state comes from `session/event` in a later phase.
 
+## Capability disclosure
+
+Before an overlay row is written, the preflight reports what each inserted
+package declares it may do, using a [capmark](https://github.com/taltara/capmark)
+manifest if the package ships one:
+
+```
+warning  capability-high-risk  "build-helper" declares fs:read, proc:spawn.
+                               proc:spawn hands over broad control — read its
+                               manifest before applying.
+```
+
+This is the one decision a runtime gate cannot make. A plugin's `apply()` runs
+in-process with full Node privileges the moment its row loads, before any tool
+call exists, so the write is the last point where installing it is still a
+choice. It reports and never blocks: almost no plugin carries a manifest today,
+and refusing them would make the check useless against a real profile.
+
+`dsh-overlay-check` stays dependency-free; this lives in `dsh-blueprint`.
+
 ## Roadmap
 
 Shipped in `dsh-blueprint` 0.5.0: reading the live loader tree, linting the

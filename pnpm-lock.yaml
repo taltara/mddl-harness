@@ -65,6 +65,10 @@ importers:
         version: 3.2.7(@types/node@24.13.3)(jiti@2.7.0)(jsdom@25.0.1)(lightningcss@1.32.0)
 
   packages/blueprint:
+    dependencies:
+      capmark:
+        specifier: ^0.2.0
+        version: 0.2.0
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: ^4.0.1
@@ -1685,6 +1689,11 @@ packages:
 
   caniuse-lite@1.0.30001809:
     resolution: {integrity: sha512-xxWVywk6a6Arlk+hymeycyn/VgqEfLDxupvhH/xiY5SJ/18kmi9o6MiO320DCUzypORHLtvh0I4i04tUhCNHNQ==}
+
+  capmark@0.2.0:
+    resolution: {integrity: sha512-ZWlK4fQXOG6bpeG7tjyMs02Je2nki7cMTX+IpFgc5pXWd61IxEj7Avfki16pLct5nJO6mTVEjXuZ30NyEH7itg==}
+    engines: {node: '>=20'}
+    hasBin: true
 
   chai@5.3.3:
     resolution: {integrity: sha512-4zNhdJD/iOjSH0A05ea+Ke6MU5mmpQcbQsSOkgdaUMJ9zTlDTD/GYlwohmIE2u0gaxHYiVHEn1Fw9mZ/ktJWgw==}
@@ -3919,6 +3928,8 @@ snapshots:
       function-bind: 1.1.2
 
   caniuse-lite@1.0.30001809: {}
+
+  capmark@0.2.0: {}
 
   chai@5.3.3:
     dependencies:
