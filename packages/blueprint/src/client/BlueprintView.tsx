@@ -594,10 +594,22 @@ function ApplyPanel({
 
       {state.status === 'done' ? (
         <p style={{ color: FACT_COLOR.change, margin: 0 }}>
-          Written. Restart the harness to load it.
+          Written.
           {state.backup === undefined
             ? ''
             : ` Previous file backed up to ${state.backup}.`}
+        </p>
+      ) : null}
+
+      {state.status === 'done' ? (
+        <p style={{ ...styles.muted, margin: '8px 0 0', fontSize: 12 }}>
+          A restart is the real test. While this harness is running it can keep
+          serving the tree it already has, so a file that looks accepted now can
+          still fail from cold — there is no previous tree to fall back to then.
+          If it does not come back up,{' '}
+          <code>dsh --profile &lt;name&gt; --dump-default-config</code> reads
+          the bundles without your overlay, and the snapshot above restores the
+          file.
         </p>
       ) : null}
 
