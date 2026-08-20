@@ -8,6 +8,8 @@ import {
 import type { GraphDocument } from '@mddl/graph-schema'
 import { type CSSProperties, useCallback, useEffect, useState } from 'react'
 import { graphFromLive } from '../graphFromLive.ts'
+import { lintLive } from '../lintLive.ts'
+import type { LiveEntry } from '../live.ts'
 import {
   APPLY_ROUTE,
   BACKUPS_ROUTE,
@@ -15,9 +17,7 @@ import {
   PRESET_ROUTE,
   PREVIEW_ROUTE,
   RESTORE_ROUTE,
-} from '../index.ts'
-import { lintLive } from '../lintLive.ts'
-import type { LiveEntry } from '../live.ts'
+} from '../routes.ts'
 
 const FACT_COLOR: Record<OverlayFact['kind'], string> = {
   change: '#3ddc97',

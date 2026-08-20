@@ -45,6 +45,14 @@ import {
 } from 'dsh-overlay-check'
 import { type EntryLike, projectEntries } from './live.ts'
 import {
+  APPLY_ROUTE,
+  BACKUPS_ROUTE,
+  LIVE_ROUTE,
+  PRESET_ROUTE,
+  PREVIEW_ROUTE,
+  RESTORE_ROUTE,
+} from './routes.ts'
+import {
   CSRF_TOKEN,
   csrfMatches,
   patchPathFromEntries,
@@ -64,12 +72,14 @@ export const name = 'dsh-blueprint'
  */
 export const inject = ['loader', 'webServer']
 
-export const LIVE_ROUTE = '/dsh-blueprint/api/live'
-export const PREVIEW_ROUTE = '/dsh-blueprint/api/preview'
-export const APPLY_ROUTE = '/dsh-blueprint/api/apply'
-export const BACKUPS_ROUTE = '/dsh-blueprint/api/backups'
-export const RESTORE_ROUTE = '/dsh-blueprint/api/restore'
-export const PRESET_ROUTE = '/dsh-blueprint/api/preset'
+export {
+  APPLY_ROUTE,
+  BACKUPS_ROUTE,
+  LIVE_ROUTE,
+  PRESET_ROUTE,
+  PREVIEW_ROUTE,
+  RESTORE_ROUTE,
+} from './routes.ts'
 
 /** Body cap. A patch overlay is kilobytes; anything larger is not one. */
 const MAX_BODY = 512 * 1024
