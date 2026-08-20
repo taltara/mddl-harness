@@ -34,6 +34,7 @@ import {
   emitPatchYaml,
   isPresetId,
 } from '@mddl/compiler'
+import { reviewRowCapabilities } from './reviewRows.ts'
 import type { GraphDocument } from '@mddl/graph-schema'
 import {
   composePatchFile,
@@ -321,7 +322,14 @@ export function apply(ctx: Context): void {
         (entry) => (entry as unknown as EntryLike).options?.id ?? '',
       ),
     )
-    return preflightOps(dirname(path), compileGraphToPatch(graph), liveIds)
+    const ops = compileGraphToPatch(graph)
+    const profileDir = dirname(path)
+    // Resolvability first: a row that stops the harness booting matters more
+    // than what its package says it may do.
+    return [
+      ...(await preflightOps(profileDir, ops, liveIds)),
+      ...reviewRowCapabilities(profileDir, ops),
+    ]
   }
 
   const patchPath = (): string => {
