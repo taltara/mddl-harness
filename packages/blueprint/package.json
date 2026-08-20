@@ -70,6 +70,6 @@
     "vitest": "^3.2.4"
   },
   "dependencies": {
-    "capmark": "^0.1.1"
+    "capmark": "^0.2.0"
   }
 }

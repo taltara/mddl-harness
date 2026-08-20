@@ -13,14 +13,14 @@
  */
 
 import { join } from 'node:path'
+import { discover, review } from 'capmark'
 import {
   type CordisPatchOp,
-  isInsertOp,
   isBarePackage,
-  packageNameOf,
+  isInsertOp,
   type PreflightFinding,
+  packageNameOf,
 } from 'dsh-overlay-check'
-import { discover, review } from 'capmark'
 
 /** Where a profile's packages live, mirroring `isInstalled`'s search. */
 function candidateDirs(profileDir: string, name: string): string[] {
@@ -71,11 +71,15 @@ export function reviewRowCapabilities(
           break
         }
 
-        const risky = result.grants.filter((g) => g.highRisk).map((g) => g.capability)
-        const granted = result.grants.map((g) => g.capability).join(', ') || 'nothing'
+        const risky = result.grants
+          .filter((g) => g.highRisk)
+          .map((g) => g.capability)
+        const granted =
+          result.grants.map((g) => g.capability).join(', ') || 'nothing'
         findings.push({
           level: 'warning',
-          code: risky.length > 0 ? 'capability-high-risk' : 'capability-declared',
+          code:
+            risky.length > 0 ? 'capability-high-risk' : 'capability-declared',
           text:
             risky.length > 0
               ? `"${name}" declares ${granted}. ${risky.join(' and ')} hand over broad control — read its manifest before applying.`

@@ -34,7 +34,6 @@ import {
   emitPatchYaml,
   isPresetId,
 } from '@mddl/compiler'
-import { reviewRowCapabilities } from './reviewRows.ts'
 import type { GraphDocument } from '@mddl/graph-schema'
 import {
   composePatchFile,
@@ -45,6 +44,7 @@ import {
   revisionOf,
 } from 'dsh-overlay-check'
 import { type EntryLike, projectEntries } from './live.ts'
+import { reviewRowCapabilities } from './reviewRows.ts'
 import {
   APPLY_ROUTE,
   BACKUPS_ROUTE,
