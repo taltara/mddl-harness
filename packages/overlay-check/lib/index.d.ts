@@ -87,4 +87,78 @@ declare function preflightOps(profileDir: string, ops: CordisPatchOp[], liveIds?
  */
 declare function presetProblem(composition: string): string | undefined;
 //#endregion
-export { BLOCK_END, BLOCK_START, type CordisInsertOp, type CordisPatchOp, type CordisRow, type ManagedSplit, type PreflightFinding, type PreflightLevel, composePatchFile, diffLines, hasManagedBlock, isBarePackage, isInsertOp, isInstalled, packageNameOf, preflightOps, presetProblem, revisionOf, splitManagedBlock };
+//#region src/snapshot.d.ts
+/**
+ * Snapshot and restore for a set of files an installer may mutate.
+ *
+ * Built for one transaction shape: `dsh plugin add` is the first mutation —
+ * it can touch the profile manifest, the lockfile, the overlay, and bundle
+ * activation together — so recovery state has to exist before that command
+ * runs, and restoring has to bring back every one of those files at once.
+ * Restoring one of them to a state the others never had is its own corruption.
+ *
+ * Nothing here spawns a process or knows what the files mean. Boot probes and
+ * promotion belong to the installer.
+ */
+/** One captured file, or a record that it did not exist. */
+interface SnapshotEntry {
+  /** Path relative to the snapshot root, POSIX separators. */
+  path: string;
+  /** Content hash, or null when the file was absent at capture time. */
+  revision: string | null;
+}
+interface SnapshotManifest {
+  id: string;
+  createdAt: string;
+  /** Why this snapshot was taken, e.g. "pre-install dsh-plugin-x". */
+  label: string;
+  entries: SnapshotEntry[];
+}
+interface SnapshotStore {
+  /** Directory snapshots live under, e.g. `<profile>/.dsh-blueprint/snapshots`. */
+  dir: string;
+  /** Root that captured paths are recorded relative to. */
+  root: string;
+}
+/**
+ * Capture the current state of `paths` before anything mutates them.
+ *
+ * A file that does not exist is captured as absent — restoring later removes
+ * it rather than leaving whatever the failed install created. That case is
+ * why "restore" cannot be a plain copy loop: `dsh plugin add` on a fresh
+ * profile creates files that have no pre-install content at all.
+ */
+declare function takeSnapshot(store: SnapshotStore, label: string, paths: string[]): Promise<SnapshotManifest>;
+/** Manifests, newest first. A directory without a readable manifest is skipped. */
+declare function listSnapshots(store: SnapshotStore): Promise<SnapshotManifest[]>;
+/**
+ * Compare the live files against a snapshot without changing anything.
+ * Returns the relative paths that differ. Empty means byte-equivalent.
+ */
+declare function diffAgainstSnapshot(store: SnapshotStore, manifest: SnapshotManifest): Promise<string[]>;
+interface RestoreResult {
+  restored: string[];
+  removed: string[];
+  /** Where the pre-restore state was preserved. Failed evidence is not destroyed. */
+  evidence: SnapshotManifest;
+}
+/**
+ * Bring every captured file back to its snapshot state.
+ *
+ * The current (failed) state is snapshotted first, so a rollback is itself
+ * recoverable and the failure evidence survives for diagnostics — rolling
+ * back is the moment someone is already having a bad day, and it must not be
+ * the irreversible step. Writes go through a temp file and rename in the same
+ * directory, so a reader sees old bytes or new bytes and never half of either.
+ */
+declare function restoreSnapshot(store: SnapshotStore, manifest: SnapshotManifest): Promise<RestoreResult>;
+/** Drop old snapshots, keeping the newest `keep`. Returns removed ids. */
+declare function pruneSnapshots(store: SnapshotStore, keep: number): Promise<string[]>;
+/** Size on disk of one snapshot, for display. */
+declare function snapshotBytes(store: SnapshotStore, manifest: SnapshotManifest): Promise<number>;
+/** Copy of a snapshot's captured content for one path, or null if absent. */
+declare function snapshotContent(store: SnapshotStore, manifest: SnapshotManifest, path: string): Promise<Buffer | null>;
+/** Re-export for callers that keep their own copies. */
+declare function copySnapshotTo(store: SnapshotStore, manifest: SnapshotManifest, destination: string): Promise<void>;
+//#endregion
+export { BLOCK_END, BLOCK_START, type CordisInsertOp, type CordisPatchOp, type CordisRow, type ManagedSplit, type PreflightFinding, type PreflightLevel, type RestoreResult, type SnapshotEntry, type SnapshotManifest, type SnapshotStore, composePatchFile, copySnapshotTo, diffAgainstSnapshot, diffLines, hasManagedBlock, isBarePackage, isInsertOp, isInstalled, listSnapshots, packageNameOf, preflightOps, presetProblem, pruneSnapshots, restoreSnapshot, revisionOf, snapshotBytes, snapshotContent, splitManagedBlock, takeSnapshot };

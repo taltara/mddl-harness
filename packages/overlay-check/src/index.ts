@@ -34,3 +34,19 @@ export {
   preflightOps,
   presetProblem,
 } from './preflight.ts'
+export type {
+  RestoreResult,
+  SnapshotEntry,
+  SnapshotManifest,
+  SnapshotStore,
+} from './snapshot.ts'
+export {
+  copySnapshotTo,
+  diffAgainstSnapshot,
+  listSnapshots,
+  pruneSnapshots,
+  restoreSnapshot,
+  snapshotBytes,
+  snapshotContent,
+  takeSnapshot,
+} from './snapshot.ts'

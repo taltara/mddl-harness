@@ -61,6 +61,43 @@ render as two hunks with the unchanged lines still visible between them. A
 prefix/suffix diff collapses that into one wall of red and green, and a diff
 nobody can read is not a review.
 
+## Transactional snapshot and restore
+
+`dsh plugin add` is the first mutation: it can change the profile manifest,
+the lockfile, the overlay, and bundle activation together. So the recovery
+snapshot must exist before that command runs, and it must cover all of those
+files as one unit — restoring one of them to a state the others never had is
+its own corruption.
+
+```ts
+import { takeSnapshot, restoreSnapshot, diffAgainstSnapshot } from 'dsh-overlay-check'
+
+const store = { dir: `${profile}/.snapshots`, root: profile }
+const files = ['package.json', 'pnpm-lock.yaml', 'cordis.patch.yml']
+
+const snap = await takeSnapshot(store, 'pre-install my-plugin', files) // pure read
+// ... run the install, the checks, the boot probe ...
+if (failed) {
+  const { evidence } = await restoreSnapshot(store, snap)
+  // every file is byte-equivalent to pre-install, verified before returning;
+  // the failed state survives as `evidence`, itself restorable.
+}
+```
+
+The semantics that matter, each pinned by a test:
+
+- **Capture is a pure read**, so taking it before the first mutation costs
+  nothing and changes nothing.
+- **Absent files are captured as absent.** A file the failed install created
+  is removed on restore, not left behind as half an install.
+- **Restore preserves the failed state first**, as a snapshot that is itself
+  restorable — rolling back is never the irreversible step, and the evidence
+  survives for diagnostics.
+- **Restore verifies convergence**: it re-hashes every file and throws rather
+  than reporting a restore that did not actually restore.
+- **An interrupted restore is re-runnable** from the same snapshot.
+- Paths are confined to the snapshot root; writes are temp-file-then-rename.
+
 ## What this does not do
 
 It proves nothing about activation. Resolvability is necessary, not sufficient:
