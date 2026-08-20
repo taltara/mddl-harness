@@ -8,7 +8,7 @@ require("node:crypto") missed the module table — not a platform seed word,
 not a materialized module, and no registered package factory
 ```
 
-Worth noting because the authoring mistake is invisible: nothing about sharing a constants module looks like it crosses a boundary, and the plugin builds and typechecks fine. The bundle only reveals it if you check what it actually requires.
+Worth noting because the authoring mistake is invisible: nothing about sharing a constants module looks like it crosses a boundary, and the plugin builds and typechecks fine. The bundle only reveals it if you check what it actually requires — `grep -o 'require("[^"]*")' lib/client.js` is now a step in my build, and on a healthy client bundle it should print nothing outside the shell's module table.
 
 **The distinction.** There are two failure severities here and they need different answers:
 
@@ -17,6 +17,6 @@ Worth noting because the authoring mistake is invisible: nothing about sharing a
 
 Both are "one plugin takes down everything", which is the underlying ask, but only the first can be solved with a better error screen. The second needs either per-entry failure isolation or a pre-boot check, and I do not think a UI affordance can reach it.
 
-For what it is worth I ended up building the second as a refusal rather than a recovery — my tool will not write a row whose package is not present in the profile, because after the write there is no running harness left to warn in. That is a workaround for one tool, not a fix for the platform, and I would much rather have the isolation.
+For what it is worth I ended up building the second as a refusal rather than a recovery — [my tool](https://github.com/taltara/mddl-harness/tree/main/packages/blueprint) will not write a row whose package is not present in the profile, because after the write there is no running harness left to warn in. That check is extracted as [`dsh-overlay-check`](https://github.com/taltara/mddl-harness/tree/main/packages/overlay-check) (MIT, Node only, no dependencies) if it is useful to anyone else writing overlays — it is one function, `preflightOps`, and it exists only because isolation does not. That is a workaround for one tool, not a fix for the platform, and I would much rather have the isolation.
 
 Upvoted. The recovery actions you suggest would have saved me an afternoon on case 1.
