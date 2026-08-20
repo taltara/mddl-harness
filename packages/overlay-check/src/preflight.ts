@@ -1,7 +1,23 @@
 import { access } from 'node:fs/promises'
 import { join } from 'node:path'
-import type { CordisPatchOp } from '@mddl/compiler'
-import { isInsertOp } from '@mddl/compiler'
+/** One Cordis row. Declared here so this package pulls in nothing. */
+export interface CordisRow {
+  id: string
+  name?: string
+  disabled?: boolean
+  config?: Record<string, unknown>
+}
+
+/** A patch op is either a row to replace, or a batch of rows to insert. */
+export interface CordisInsertOp {
+  insert: CordisRow[]
+}
+
+export type CordisPatchOp = CordisRow | CordisInsertOp
+
+export function isInsertOp(op: CordisPatchOp): op is CordisInsertOp {
+  return 'insert' in op
+}
 
 export type PreflightLevel = 'blocking' | 'warning'
 

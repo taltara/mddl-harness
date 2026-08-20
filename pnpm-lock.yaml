@@ -93,6 +93,9 @@ importers:
       '@types/react':
         specifier: ^18.3.1
         version: 18.3.31
+      dsh-overlay-check:
+        specifier: workspace:*
+        version: link:../overlay-check
       react:
         specifier: ^18.2.0
         version: 18.3.1
@@ -127,6 +130,21 @@ importers:
       vitest:
         specifier: ^3.2.4
         version: 3.2.7(@types/node@24.13.3)(jiti@2.7.0)(jsdom@25.0.1)(lightningcss@1.32.0)
+
+  packages/overlay-check:
+    devDependencies:
+      '@types/node':
+        specifier: ^22.10.0
+        version: 22.20.1
+      tsdown:
+        specifier: ^0.15.6
+        version: 0.15.12(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3)(typescript@5.9.3)
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/node@22.20.1)(jiti@2.7.0)(jsdom@25.0.1)(lightningcss@1.32.0)
 
 packages:
 

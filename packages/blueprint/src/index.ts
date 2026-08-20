@@ -35,13 +35,15 @@ import {
   isPresetId,
 } from '@mddl/compiler'
 import type { GraphDocument } from '@mddl/graph-schema'
-import { type EntryLike, projectEntries } from './live.ts'
-import { composePatchFile, diffLines, revisionOf } from './patchFile.ts'
 import {
+  composePatchFile,
+  diffLines,
   type PreflightFinding,
   preflightOps,
   presetProblem,
-} from './preflight.ts'
+  revisionOf,
+} from 'dsh-overlay-check'
+import { type EntryLike, projectEntries } from './live.ts'
 import {
   CSRF_TOKEN,
   csrfMatches,

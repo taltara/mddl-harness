@@ -1,0 +1,56 @@
+{
+  "name": "dsh-overlay-check",
+  "version": "0.1.0",
+  "description": "Offline safety checks for DeepSeek Harness overlays: resolvability preflight, confined managed-block writes, and a readable diff.",
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "cordis",
+    "config",
+    "validation"
+  ],
+  "license": "MIT",
+  "author": "talosteam",
+  "homepage": "https://github.com/taltara/mddl-harness/tree/main/packages/overlay-check#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/taltara/mddl-harness.git",
+    "directory": "packages/overlay-check"
+  },
+  "bugs": {
+    "url": "https://github.com/taltara/mddl-harness/issues"
+  },
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "files": [
+    "lib"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsdown": "^0.15.6",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  },
+  "publishConfig": {
+    "main": "./lib/index.js",
+    "types": "./lib/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./lib/index.d.ts",
+        "default": "./lib/index.js"
+      }
+    }
+  }
+}
