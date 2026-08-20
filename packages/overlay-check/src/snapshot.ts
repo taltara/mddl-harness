@@ -4,6 +4,7 @@ import {
   mkdir,
   readdir,
   readFile,
+  realpath,
   rename,
   rm,
   stat,
@@ -32,9 +33,17 @@ export interface SnapshotEntry {
   revision: string | null
 }
 
+/**
+ * `capture` is a snapshot taken before a mutation. `evidence` is the state a
+ * restore replaced — kept so a failed transaction stays diagnosable, and
+ * retained on its own budget so routine pruning cannot quietly discard it.
+ */
+export type SnapshotKind = 'capture' | 'evidence'
+
 export interface SnapshotManifest {
   id: string
   createdAt: string
+  kind: SnapshotKind
   /** Why this snapshot was taken, e.g. "pre-install dsh-plugin-x". */
   label: string
   entries: SnapshotEntry[]
@@ -49,17 +58,62 @@ export interface SnapshotStore {
 
 const MANIFEST = 'manifest.json'
 
+let tempSequence = 0
+function tempCounter(): string {
+  tempSequence += 1
+  return `${Date.now().toString(36)}-${tempSequence}`
+}
+
 function hashOf(content: Buffer | string): string {
   return createHash('sha256').update(content).digest('hex').slice(0, 16)
 }
 
-/** Refuse a path that would escape the root. Symlinks are not followed. */
+/** Lexical containment: rejects `..` and absolute paths pointing elsewhere. */
 function relativeTo(root: string, path: string): string {
   const rel = relative(resolve(root), resolve(root, path))
   if (rel.startsWith('..') || rel === '') {
     throw new Error(`snapshot: "${path}" is outside the snapshot root`)
   }
   return rel.split(sep).join('/')
+}
+
+/** The nearest ancestor that exists, so an absent file can still be checked. */
+async function existingAncestor(path: string): Promise<string> {
+  let current = path
+  for (;;) {
+    try {
+      return await realpath(current)
+    } catch {
+      const parent = dirname(current)
+      if (parent === current) {
+        return current
+      }
+      current = parent
+    }
+  }
+}
+
+/**
+ * Containment that survives symlinks.
+ *
+ * Lexical checks alone are not enough: a symlink *inside* the root pointing
+ * out of it resolves cleanly by path arithmetic, and following it would let a
+ * transaction read — and on restore, write — outside the profile it claims to
+ * be confined to. Both the file and its nearest existing ancestor are resolved
+ * before either is trusted.
+ */
+async function assertContained(root: string, rel: string): Promise<void> {
+  const realRoot = await existingAncestor(resolve(root))
+  const real = await existingAncestor(resolve(root, rel))
+  const within = relative(realRoot, real)
+  // An absent file resolves to its nearest existing ancestor, which for a
+  // new file directly under the root is the root itself — that is contained,
+  // not an escape.
+  if (within.startsWith('..')) {
+    throw new Error(
+      `snapshot: "${rel}" resolves outside the snapshot root (symlink?)`,
+    )
+  }
 }
 
 async function readIfExists(path: string): Promise<Buffer | null> {
@@ -85,12 +139,14 @@ export async function takeSnapshot(
   store: SnapshotStore,
   label: string,
   paths: string[],
+  kind: SnapshotKind = 'capture',
 ): Promise<SnapshotManifest> {
   const entries: SnapshotEntry[] = []
   const captured: { rel: string; content: Buffer | null }[] = []
 
   for (const path of paths) {
     const rel = relativeTo(store.root, path)
+    await assertContained(store.root, rel)
     const content = await readIfExists(resolve(store.root, rel))
     captured.push({ rel, content })
     entries.push({
@@ -105,6 +161,7 @@ export async function takeSnapshot(
     // are still two snapshots, and must not overwrite each other's history.
     id: hashOf(JSON.stringify(entries) + label + createdAt + Math.random()),
     createdAt,
+    kind,
     label,
     entries,
   }
@@ -192,11 +249,15 @@ export async function restoreSnapshot(
     store,
     `pre-restore of ${manifest.id} (${manifest.label})`,
     manifest.entries.map((entry) => entry.path),
+    'evidence',
   )
 
   const restored: string[] = []
   const removed: string[] = []
   for (const entry of manifest.entries) {
+    // Re-checked at write time: the tree may have gained a symlink since
+    // capture, and this loop writes.
+    await assertContained(store.root, entry.path)
     const livePath = resolve(store.root, entry.path)
     if (entry.revision === null) {
       // Captured as absent: the install created it, so restore removes it.
@@ -208,7 +269,10 @@ export async function restoreSnapshot(
       join(store.dir, manifest.id, 'files', entry.path),
     )
     await mkdir(dirname(livePath), { recursive: true })
-    const temp = `${livePath}.snapshot-${process.pid}.tmp`
+    // Unique per attempt. A fixed name collides with the leftover temp of a
+    // restore that died between write and rename, which turned "retry the
+    // rollback" into EEXIST — exactly when retrying matters most.
+    const temp = `${livePath}.snapshot-${process.pid}-${tempCounter()}.tmp`
     await writeFile(temp, saved, { flag: 'wx' })
     await rename(temp, livePath)
     restored.push(entry.path)
@@ -223,13 +287,31 @@ export async function restoreSnapshot(
   return { restored, removed, evidence }
 }
 
-/** Drop old snapshots, keeping the newest `keep`. Returns removed ids. */
+/**
+ * Drop old snapshots, newest kept. Captures and evidence have separate
+ * budgets on purpose: routine pruning of pre-install captures must not
+ * silently discard the record of a transaction that failed.
+ *
+ * A bare number applies to captures and leaves evidence untouched.
+ */
 export async function pruneSnapshots(
   store: SnapshotStore,
-  keep: number,
+  keep: number | { captures?: number; evidence?: number },
 ): Promise<string[]> {
+  const budget = typeof keep === 'number' ? { captures: keep } : keep
   const manifests = await listSnapshots(store)
-  const stale = manifests.slice(Math.max(0, keep))
+  const stale: SnapshotManifest[] = []
+
+  const byKind = (kind: SnapshotKind) =>
+    manifests.filter((manifest) => (manifest.kind ?? 'capture') === kind)
+
+  if (budget.captures !== undefined) {
+    stale.push(...byKind('capture').slice(Math.max(0, budget.captures)))
+  }
+  if (budget.evidence !== undefined) {
+    stale.push(...byKind('evidence').slice(Math.max(0, budget.evidence)))
+  }
+
   for (const manifest of stale) {
     await rm(join(store.dir, manifest.id), { recursive: true, force: true })
   }

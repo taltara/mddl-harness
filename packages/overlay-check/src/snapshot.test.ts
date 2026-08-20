@@ -1,9 +1,17 @@
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import {
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  symlink,
+  writeFile,
+} from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { beforeEach, describe, expect, it } from 'vitest'
 import {
   diffAgainstSnapshot,
+  listSnapshots as listAll,
   listSnapshots,
   pruneSnapshots,
   restoreSnapshot,
@@ -212,5 +220,91 @@ describe('listSnapshots and pruneSnapshots', () => {
     await takeSnapshot(store, 'one', PROFILE_FILES)
     await mkdir(join(store.dir, 'not-a-snapshot'), { recursive: true })
     expect(await listSnapshots(store)).toHaveLength(1)
+  })
+})
+
+// The gates sandbaseai/dsh-plugin-store#7 says adoption will be judged on.
+describe('acceptance gates from dsh-plugin-store#7', () => {
+  // Gate 6: "all paths remain confined to the profile transaction root,
+  // including symlink cases".
+  it('refuses a symlink inside the root that points outside it', async () => {
+    const outside = await mkdtemp(join(tmpdir(), 'outside-'))
+    await writeFile(join(outside, 'secret.txt'), 'SECRET\n')
+    await symlink(join(outside, 'secret.txt'), join(root, 'link.txt'))
+    await expect(takeSnapshot(store, 'probe', ['link.txt'])).rejects.toThrow(
+      /outside the snapshot root/,
+    )
+  })
+
+  it('still allows a symlink that stays inside the root', async () => {
+    await writeFile(join(root, 'real.txt'), 'inside\n')
+    await symlink(join(root, 'real.txt'), join(root, 'alias.txt'))
+    const manifest = await takeSnapshot(store, 'probe', ['alias.txt'])
+    expect(manifest.entries[0]?.revision).not.toBeNull()
+  })
+
+  // Gate 4: "interrupted restore is idempotently retryable" — including the
+  // interruption that leaves a temp file behind.
+  it('retries after a restore died between write and rename', async () => {
+    const manifest = await takeSnapshot(store, 'pre-install', PROFILE_FILES)
+    await simulateFailedInstall()
+    await writeFile(
+      join(root, `package.json.snapshot-${process.pid}.tmp`),
+      'leftover from a dead restore',
+    )
+    await restoreSnapshot(store, manifest)
+    expect(await diffAgainstSnapshot(store, manifest)).toHaveLength(0)
+  })
+
+  it('is idempotent: restoring twice converges both times', async () => {
+    const manifest = await takeSnapshot(store, 'pre-install', PROFILE_FILES)
+    await simulateFailedInstall()
+    await restoreSnapshot(store, manifest)
+    await restoreSnapshot(store, manifest)
+    expect(await diffAgainstSnapshot(store, manifest)).toHaveLength(0)
+  })
+
+  // Gate 5: "failed-state evidence has a separate identity and retention
+  // boundary".
+  it('marks evidence distinctly from captures', async () => {
+    const manifest = await takeSnapshot(store, 'pre-install', PROFILE_FILES)
+    await simulateFailedInstall()
+    const { evidence } = await restoreSnapshot(store, manifest)
+    expect(manifest.kind).toBe('capture')
+    expect(evidence.kind).toBe('evidence')
+  })
+
+  it('pruning captures does not discard the failed-state evidence', async () => {
+    const manifest = await takeSnapshot(store, 'pre-install', PROFILE_FILES)
+    await simulateFailedInstall()
+    const { evidence } = await restoreSnapshot(store, manifest)
+
+    // Aggressive routine pruning of captures.
+    await pruneSnapshots(store, 0)
+
+    const remaining = await listAll(store)
+    expect(remaining.map((m) => m.id)).toContain(evidence.id)
+    expect(remaining.map((m) => m.id)).not.toContain(manifest.id)
+  })
+
+  it('prunes evidence only when given its own budget', async () => {
+    const manifest = await takeSnapshot(store, 'pre-install', PROFILE_FILES)
+    await simulateFailedInstall()
+    const { evidence } = await restoreSnapshot(store, manifest)
+    await pruneSnapshots(store, { evidence: 0 })
+    const remaining = await listAll(store)
+    expect(remaining.map((m) => m.id)).not.toContain(evidence.id)
+  })
+
+  // Gate 1: the caller names the files; nothing is discovered.
+  it('captures exactly the paths it was given and nothing else', async () => {
+    await writeFile(
+      join(root, 'unrelated.txt'),
+      'not part of the transaction\n',
+    )
+    const manifest = await takeSnapshot(store, 'pre-install', PROFILE_FILES)
+    expect(manifest.entries.map((e) => e.path).sort()).toEqual(
+      [...PROFILE_FILES].sort(),
+    )
   })
 })

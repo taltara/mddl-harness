@@ -37,6 +37,7 @@ export {
 export type {
   RestoreResult,
   SnapshotEntry,
+  SnapshotKind,
   SnapshotManifest,
   SnapshotStore,
 } from './snapshot.ts'

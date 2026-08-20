@@ -107,9 +107,16 @@ interface SnapshotEntry {
   /** Content hash, or null when the file was absent at capture time. */
   revision: string | null;
 }
+/**
+ * `capture` is a snapshot taken before a mutation. `evidence` is the state a
+ * restore replaced — kept so a failed transaction stays diagnosable, and
+ * retained on its own budget so routine pruning cannot quietly discard it.
+ */
+type SnapshotKind = 'capture' | 'evidence';
 interface SnapshotManifest {
   id: string;
   createdAt: string;
+  kind: SnapshotKind;
   /** Why this snapshot was taken, e.g. "pre-install dsh-plugin-x". */
   label: string;
   entries: SnapshotEntry[];
@@ -128,7 +135,7 @@ interface SnapshotStore {
  * why "restore" cannot be a plain copy loop: `dsh plugin add` on a fresh
  * profile creates files that have no pre-install content at all.
  */
-declare function takeSnapshot(store: SnapshotStore, label: string, paths: string[]): Promise<SnapshotManifest>;
+declare function takeSnapshot(store: SnapshotStore, label: string, paths: string[], kind?: SnapshotKind): Promise<SnapshotManifest>;
 /** Manifests, newest first. A directory without a readable manifest is skipped. */
 declare function listSnapshots(store: SnapshotStore): Promise<SnapshotManifest[]>;
 /**
@@ -152,8 +159,17 @@ interface RestoreResult {
  * directory, so a reader sees old bytes or new bytes and never half of either.
  */
 declare function restoreSnapshot(store: SnapshotStore, manifest: SnapshotManifest): Promise<RestoreResult>;
-/** Drop old snapshots, keeping the newest `keep`. Returns removed ids. */
-declare function pruneSnapshots(store: SnapshotStore, keep: number): Promise<string[]>;
+/**
+ * Drop old snapshots, newest kept. Captures and evidence have separate
+ * budgets on purpose: routine pruning of pre-install captures must not
+ * silently discard the record of a transaction that failed.
+ *
+ * A bare number applies to captures and leaves evidence untouched.
+ */
+declare function pruneSnapshots(store: SnapshotStore, keep: number | {
+  captures?: number;
+  evidence?: number;
+}): Promise<string[]>;
 /** Size on disk of one snapshot, for display. */
 declare function snapshotBytes(store: SnapshotStore, manifest: SnapshotManifest): Promise<number>;
 /** Copy of a snapshot's captured content for one path, or null if absent. */
@@ -161,4 +177,4 @@ declare function snapshotContent(store: SnapshotStore, manifest: SnapshotManifes
 /** Re-export for callers that keep their own copies. */
 declare function copySnapshotTo(store: SnapshotStore, manifest: SnapshotManifest, destination: string): Promise<void>;
 //#endregion
-export { BLOCK_END, BLOCK_START, type CordisInsertOp, type CordisPatchOp, type CordisRow, type ManagedSplit, type PreflightFinding, type PreflightLevel, type RestoreResult, type SnapshotEntry, type SnapshotManifest, type SnapshotStore, composePatchFile, copySnapshotTo, diffAgainstSnapshot, diffLines, hasManagedBlock, isBarePackage, isInsertOp, isInstalled, listSnapshots, packageNameOf, preflightOps, presetProblem, pruneSnapshots, restoreSnapshot, revisionOf, snapshotBytes, snapshotContent, splitManagedBlock, takeSnapshot };
+export { BLOCK_END, BLOCK_START, type CordisInsertOp, type CordisPatchOp, type CordisRow, type ManagedSplit, type PreflightFinding, type PreflightLevel, type RestoreResult, type SnapshotEntry, type SnapshotKind, type SnapshotManifest, type SnapshotStore, composePatchFile, copySnapshotTo, diffAgainstSnapshot, diffLines, hasManagedBlock, isBarePackage, isInsertOp, isInstalled, listSnapshots, packageNameOf, preflightOps, presetProblem, pruneSnapshots, restoreSnapshot, revisionOf, snapshotBytes, snapshotContent, splitManagedBlock, takeSnapshot };

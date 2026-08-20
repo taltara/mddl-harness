@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { access, copyFile, mkdir, readFile, readdir, rename, rm, stat, writeFile } from "node:fs/promises";
+import { access, copyFile, mkdir, readFile, readdir, realpath, rename, rm, stat, writeFile } from "node:fs/promises";
 import { dirname, join, relative, resolve, sep } from "node:path";
 
 //#region src/patchFile.ts
@@ -206,14 +206,42 @@ function presetProblem(composition) {
 //#endregion
 //#region src/snapshot.ts
 const MANIFEST = "manifest.json";
+let tempSequence = 0;
+function tempCounter() {
+	tempSequence += 1;
+	return `${Date.now().toString(36)}-${tempSequence}`;
+}
 function hashOf(content) {
 	return createHash("sha256").update(content).digest("hex").slice(0, 16);
 }
-/** Refuse a path that would escape the root. Symlinks are not followed. */
+/** Lexical containment: rejects `..` and absolute paths pointing elsewhere. */
 function relativeTo(root, path) {
 	const rel = relative(resolve(root), resolve(root, path));
 	if (rel.startsWith("..") || rel === "") throw new Error(`snapshot: "${path}" is outside the snapshot root`);
 	return rel.split(sep).join("/");
+}
+/** The nearest ancestor that exists, so an absent file can still be checked. */
+async function existingAncestor(path) {
+	let current = path;
+	for (;;) try {
+		return await realpath(current);
+	} catch {
+		const parent = dirname(current);
+		if (parent === current) return current;
+		current = parent;
+	}
+}
+/**
+* Containment that survives symlinks.
+*
+* Lexical checks alone are not enough: a symlink *inside* the root pointing
+* out of it resolves cleanly by path arithmetic, and following it would let a
+* transaction read — and on restore, write — outside the profile it claims to
+* be confined to. Both the file and its nearest existing ancestor are resolved
+* before either is trusted.
+*/
+async function assertContained(root, rel) {
+	if (relative(await existingAncestor(resolve(root)), await existingAncestor(resolve(root, rel))).startsWith("..")) throw new Error(`snapshot: "${rel}" resolves outside the snapshot root (symlink?)`);
 }
 async function readIfExists(path) {
 	try {
@@ -231,11 +259,12 @@ async function readIfExists(path) {
 * why "restore" cannot be a plain copy loop: `dsh plugin add` on a fresh
 * profile creates files that have no pre-install content at all.
 */
-async function takeSnapshot(store, label, paths) {
+async function takeSnapshot(store, label, paths, kind = "capture") {
 	const entries = [];
 	const captured = [];
 	for (const path of paths) {
 		const rel = relativeTo(store.root, path);
+		await assertContained(store.root, rel);
 		const content = await readIfExists(resolve(store.root, rel));
 		captured.push({
 			rel,
@@ -250,6 +279,7 @@ async function takeSnapshot(store, label, paths) {
 	const manifest = {
 		id: hashOf(JSON.stringify(entries) + label + createdAt + Math.random()),
 		createdAt,
+		kind,
 		label,
 		entries
 	};
@@ -301,10 +331,11 @@ async function diffAgainstSnapshot(store, manifest) {
 * directory, so a reader sees old bytes or new bytes and never half of either.
 */
 async function restoreSnapshot(store, manifest) {
-	const evidence = await takeSnapshot(store, `pre-restore of ${manifest.id} (${manifest.label})`, manifest.entries.map((entry) => entry.path));
+	const evidence = await takeSnapshot(store, `pre-restore of ${manifest.id} (${manifest.label})`, manifest.entries.map((entry) => entry.path), "evidence");
 	const restored = [];
 	const removed = [];
 	for (const entry of manifest.entries) {
+		await assertContained(store.root, entry.path);
 		const livePath = resolve(store.root, entry.path);
 		if (entry.revision === null) {
 			await rm(livePath, { force: true });
@@ -313,7 +344,7 @@ async function restoreSnapshot(store, manifest) {
 		}
 		const saved = await readFile(join(store.dir, manifest.id, "files", entry.path));
 		await mkdir(dirname(livePath), { recursive: true });
-		const temp = `${livePath}.snapshot-${process.pid}.tmp`;
+		const temp = `${livePath}.snapshot-${process.pid}-${tempCounter()}.tmp`;
 		await writeFile(temp, saved, { flag: "wx" });
 		await rename(temp, livePath);
 		restored.push(entry.path);
@@ -326,9 +357,20 @@ async function restoreSnapshot(store, manifest) {
 		evidence
 	};
 }
-/** Drop old snapshots, keeping the newest `keep`. Returns removed ids. */
+/**
+* Drop old snapshots, newest kept. Captures and evidence have separate
+* budgets on purpose: routine pruning of pre-install captures must not
+* silently discard the record of a transaction that failed.
+*
+* A bare number applies to captures and leaves evidence untouched.
+*/
 async function pruneSnapshots(store, keep) {
-	const stale = (await listSnapshots(store)).slice(Math.max(0, keep));
+	const budget = typeof keep === "number" ? { captures: keep } : keep;
+	const manifests = await listSnapshots(store);
+	const stale = [];
+	const byKind = (kind) => manifests.filter((manifest) => (manifest.kind ?? "capture") === kind);
+	if (budget.captures !== void 0) stale.push(...byKind("capture").slice(Math.max(0, budget.captures)));
+	if (budget.evidence !== void 0) stale.push(...byKind("evidence").slice(Math.max(0, budget.evidence)));
 	for (const manifest of stale) await rm(join(store.dir, manifest.id), {
 		recursive: true,
 		force: true

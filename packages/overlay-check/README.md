@@ -96,7 +96,16 @@ The semantics that matter, each pinned by a test:
 - **Restore verifies convergence**: it re-hashes every file and throws rather
   than reporting a restore that did not actually restore.
 - **An interrupted restore is re-runnable** from the same snapshot.
-- Paths are confined to the snapshot root; writes are temp-file-then-rename.
+- **Paths are confined through symlinks, not just lexically.** A symlink
+  inside the root pointing out of it resolves cleanly by path arithmetic;
+  both the file and its nearest existing ancestor are resolved before either
+  is trusted.
+- **Evidence is retained on its own budget.** `pruneSnapshots(store, 20)`
+  prunes pre-mutation captures and leaves failed-state evidence alone; pass
+  `{ captures, evidence }` to bound both. Routine pruning must not quietly
+  discard the record of a transaction that failed.
+- Writes are temp-file-then-rename, with a unique temp name per attempt so a
+  restore that died between write and rename can simply be run again.
 
 ## What this does not do
 
