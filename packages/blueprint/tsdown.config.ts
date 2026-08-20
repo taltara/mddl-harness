@@ -30,7 +30,10 @@ export default defineConfig([
     platform: 'node',
     target: 'es2024',
     fixedExtension: false,
-    dts: false,
+    // `exports["."].types` names lib/types/index.d.ts; this is the only build
+    // step that can produce it. dsh-blueprint 0.5.2 shipped without it -
+    // confirmed against the published tarball, not just this repo's history.
+    dts: true,
     clean: false,
   },
   {

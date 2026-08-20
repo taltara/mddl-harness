@@ -37,7 +37,9 @@
         "noExplicitAny": "error",
         "noConsole": {
           "level": "error",
-          "options": { "allow": ["warn", "error"] }
+          "options": {
+            "allow": ["warn", "error"]
+          }
         }
       },
       "complexity": {
@@ -51,5 +53,17 @@
         "organizeImports": "on"
       }
     }
-  }
+  },
+  "overrides": [
+    {
+      "includes": ["scripts/**"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noConsole": "off"
+          }
+        }
+      }
+    }
+  ]
 }

@@ -1,6 +1,6 @@
 {
   "name": "dsh-blueprint",
-  "version": "0.5.2",
+  "version": "0.6.0",
   "description": "Read the config your harness actually booted, and validate an overlay before you apply it. A Blueprint tab for the DSH web client.",
   "keywords": [
     "dsh-plugin",
@@ -22,10 +22,10 @@
   },
   "type": "module",
   "main": "lib/index.js",
-  "types": "lib/types/index.d.ts",
+  "types": "lib/index.d.ts",
   "exports": {
     ".": {
-      "types": "./lib/types/index.d.ts",
+      "types": "./lib/index.d.ts",
       "default": "./lib/index.js"
     },
     "./client": "./lib/client.js",
@@ -45,8 +45,8 @@
   "files": [
     "cordis.patch.yml",
     "lib/index.js",
-    "lib/client.js",
-    "lib/types/**/*.d.ts"
+    "lib/index.d.ts",
+    "lib/client.js"
   ],
   "scripts": {
     "build": "tsdown",
