@@ -20,6 +20,7 @@ This is **not** a fork of `dsh` and **not** a child-process wrapper around `npx 
 - `@mddl/compiler` — graph → Cordis patch YAML, plus overlay linting
 - `@mddl/studio` — visual editor
 - `dsh-blueprint` — **Blueprint** tab inside the DSH web client ([readme](packages/blueprint/README.md))
+- `dsh-overlay-check` — the overlay safety checks on their own, no dependencies, for anything that writes config ([readme](packages/overlay-check/README.md))
 
 ## Run
 
@@ -75,6 +76,20 @@ Next, in order:
 1. Map `session/event` onto canvas telemetry, replacing the local animation.
 2. English and 中文 both first class.
 3. Model rows beyond the shipped DeepSeek adapters.
+
+## If a harness will not start
+
+A row naming a package the profile cannot load stops the harness booting
+outright, rather than disabling one entry. `dsh-blueprint` refuses to write one,
+but if you get there by another route, two things help:
+
+- `dsh --profile <name> --dump-default-config` reads the bundles while skipping
+  the profile and home user layers, so it still answers when the overlay is the
+  problem. Confirmed on rc.7: a row written into a profile's `cordis.patch.yml`
+  shows in `--dump-config` and is absent from `--dump-default-config`.
+- The [DSH handbook's recovery runbook](https://sandbaseai.github.io/deepseek-harness-handbook/invalid-overlay-boot-failure.html)
+  by the sandbaseai folks is the most thorough write-up of getting back from
+  this, including which user layer owns which file.
 
 ## Status
 
