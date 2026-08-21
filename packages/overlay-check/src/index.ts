@@ -9,7 +9,7 @@
  * Node only, no dependencies, no opinion about how you edit config.
  */
 
-export type { ManagedSplit } from './patchFile.ts'
+export type { BlockOwner, ManagedSplit } from './patchFile.ts'
 export {
   BLOCK_END,
   BLOCK_START,

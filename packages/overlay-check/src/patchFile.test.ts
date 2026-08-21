@@ -122,3 +122,63 @@ describe('diffLines', () => {
     expect(diffLines('a\nb', 'a\nb').every((r) => r.kind === 'same')).toBe(true)
   })
 })
+
+describe('two writers sharing one file', () => {
+  const BLUEPRINT = { name: 'dsh-blueprint' }
+  const PRAE = {
+    name: 'prae',
+    wrote: 'Written by `prae init`. Delete the whole block',
+  }
+
+  it('gives each owner its own markers', () => {
+    const mine = composePatchFile('[]\n', '- insert: [{id: prae}]', PRAE)
+    expect(mine).toContain('# >>> prae managed block')
+    expect(mine).not.toContain('dsh-blueprint managed block')
+  })
+
+  // The reason the owner exists: a block is replaced wholesale, so two tools
+  // on one marker would mean whichever wrote second deleted the other's rows.
+  it('leaves the other owner block untouched', () => {
+    const withBlueprint = composePatchFile(
+      '# hand written\n[]\n',
+      '- insert: [{id: ui-blueprint}]',
+      BLUEPRINT,
+    )
+    const both = composePatchFile(withBlueprint, '- insert: [{id: prae}]', PRAE)
+
+    expect(both).toContain('ui-blueprint')
+    expect(both).toContain('id: prae')
+    expect(both).toContain('# >>> dsh-blueprint managed block')
+    expect(both).toContain('# >>> prae managed block')
+    expect(both).toContain('# hand written')
+  })
+
+  it('rewrites only its own block on a second pass', () => {
+    const first = composePatchFile(
+      '[]\n',
+      '- insert: [{id: ui-blueprint}]',
+      BLUEPRINT,
+    )
+    const both = composePatchFile(first, '- insert: [{id: prae, v: 1}]', PRAE)
+    const again = composePatchFile(both, '- insert: [{id: prae, v: 2}]', PRAE)
+
+    expect(again).toContain('v: 2')
+    expect(again).not.toContain('v: 1')
+    // Blueprint's rows survived our rewrite.
+    expect(again).toContain('ui-blueprint')
+    expect(again.match(/# >>> prae managed block/g)).toHaveLength(1)
+  })
+
+  it('reads back only its own rows', () => {
+    const first = composePatchFile(
+      '[]\n',
+      '- insert: [{id: ui-blueprint}]',
+      BLUEPRINT,
+    )
+    const both = composePatchFile(first, '- insert: [{id: prae}]', PRAE)
+
+    expect(splitManagedBlock(both, PRAE).managed).toContain('id: prae')
+    expect(splitManagedBlock(both, PRAE).managed).not.toContain('ui-blueprint')
+    expect(splitManagedBlock(both, BLUEPRINT).managed).toContain('ui-blueprint')
+  })
+})

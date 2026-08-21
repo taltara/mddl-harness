@@ -1,6 +1,6 @@
 {
   "name": "dsh-overlay-check",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Offline safety checks for DeepSeek Harness overlays: resolvability preflight, confined managed-block writes, and a readable diff.",
   "keywords": [
     "dsh",

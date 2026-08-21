@@ -1,24 +1,53 @@
 import { createHash } from 'node:crypto'
 
 /**
- * Blueprint owns one marker-delimited region of the profile's
+ * A writer owns one marker-delimited region of the profile's
  * `cordis.patch.yml` and nothing else. Everything outside the markers — hand
  * written rows, comments, `!!js` expressions — survives byte for byte, because
  * a config file a GUI cannot share is a config file people stop hand editing.
+ *
+ * The owner is part of the marker because a block is *replaced* wholesale on
+ * every write. Two tools sharing one marker would not merge; whichever wrote
+ * second would silently delete the other's rows. Naming the owner gives each
+ * writer its own region, and makes the file say who to go back to.
  */
 export const BLOCK_START = '# >>> dsh-blueprint managed block'
 export const BLOCK_END = '# <<< dsh-blueprint managed block'
 
-const BLOCK_HEADER = [
-  BLOCK_START,
-  '# Written by the Blueprint tab. Edit it there, or delete the whole block',
-  '# (markers included) to take these rows back by hand.',
-].join('\n')
+/** The writer whose block is being read or rewritten. */
+export interface BlockOwner {
+  /** Appears in the markers, e.g. `prae` → `# >>> prae managed block`. */
+  readonly name: string
+  /** One line telling a reader where these rows came from. */
+  readonly wrote?: string
+}
+
+const DEFAULT_OWNER: BlockOwner = {
+  name: 'dsh-blueprint',
+  wrote:
+    'Written by the Blueprint tab. Edit it there, or delete the whole block',
+}
+
+function markersFor(owner: BlockOwner | undefined) {
+  const name = owner?.name ?? DEFAULT_OWNER.name
+  const wrote = owner?.wrote ?? DEFAULT_OWNER.wrote
+  const start = `# >>> ${name} managed block`
+  const end = `# <<< ${name} managed block`
+  return {
+    start,
+    end,
+    header: [
+      start,
+      `# ${wrote ?? `Written by ${name}. Delete the whole block`}`,
+      '# (markers included) to take these rows back by hand.',
+    ].join('\n'),
+  }
+}
 
 export interface ManagedSplit {
   /** Everything before the block. Empty when the file has no block yet. */
   before: string
-  /** The rows Blueprint owns, without the markers. Undefined when absent. */
+  /** The rows this owner controls, without the markers. Undefined when absent. */
   managed: string | undefined
   /** Everything after the block. */
   after: string
@@ -37,18 +66,22 @@ function markerIndex(lines: string[], marker: string, from = 0): number {
   return -1
 }
 
-export function splitManagedBlock(source: string): ManagedSplit {
+export function splitManagedBlock(
+  source: string,
+  owner?: BlockOwner,
+): ManagedSplit {
+  const { start: startMarker, end: endMarker } = markersFor(owner)
   const lines = source.split('\n')
-  const start = markerIndex(lines, BLOCK_START)
+  const start = markerIndex(lines, startMarker)
   if (start === -1) {
     return { before: source, managed: undefined, after: '' }
   }
-  const end = markerIndex(lines, BLOCK_END, start + 1)
+  const end = markerIndex(lines, endMarker, start + 1)
   if (end === -1) {
     // A start without an end means someone edited the block by hand and left
     // it open. Refusing is safer than guessing where their content resumes.
     throw new Error(
-      `${BLOCK_START} has no matching ${BLOCK_END}. Fix or remove the block by hand before applying.`,
+      `${startMarker} has no matching ${endMarker}. Fix or remove the block by hand before applying.`,
     )
   }
   // The header comments belong to the block, so rewind past them.
@@ -63,9 +96,9 @@ export function splitManagedBlock(source: string): ManagedSplit {
   }
 }
 
-/** Whether a file already carries a Blueprint block. */
-export function hasManagedBlock(source: string): boolean {
-  return markerIndex(source.split('\n'), BLOCK_START) !== -1
+/** Whether a file already carries this owner's block. */
+export function hasManagedBlock(source: string, owner?: BlockOwner): boolean {
+  return markerIndex(source.split('\n'), markersFor(owner).start) !== -1
 }
 
 function trimTrailingBlankLines(value: string): string {
@@ -73,11 +106,20 @@ function trimTrailingBlankLines(value: string): string {
 }
 
 /**
- * Rebuild a patch file with `rows` as the managed block, leaving every other
- * byte where it was. Passing empty rows removes the block entirely.
+ * Rebuild a patch file with `rows` as this owner's managed block, leaving every
+ * other byte where it was. Passing empty rows removes the block entirely.
+ *
+ * Only the named owner's block is touched. Another writer's block sits in
+ * `before` or `after` and survives untouched, which is what lets two tools
+ * manage the same file without erasing each other.
  */
-export function composePatchFile(source: string, rows: string): string {
-  const { before, after } = splitManagedBlock(source)
+export function composePatchFile(
+  source: string,
+  rows: string,
+  owner?: BlockOwner,
+): string {
+  const { end, header } = markersFor(owner)
+  const { before, after } = splitManagedBlock(source, owner)
   const head = trimTrailingBlankLines(before)
   const tail = trimTrailingBlankLines(after)
   const body = rows.trim()
@@ -87,7 +129,7 @@ export function composePatchFile(source: string, rows: string): string {
     parts.push(head)
   }
   if (body !== '') {
-    parts.push([BLOCK_HEADER, body, BLOCK_END].join('\n'))
+    parts.push([header, body, end].join('\n'))
   }
   if (tail !== '') {
     parts.push(tail)
