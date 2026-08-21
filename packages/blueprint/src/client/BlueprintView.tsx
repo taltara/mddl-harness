@@ -18,16 +18,17 @@ import {
   PREVIEW_ROUTE,
   RESTORE_ROUTE,
 } from '../routes.ts'
+import { SIGNAL, SIGNAL_STYLE } from './signal.ts'
 
 const FACT_COLOR: Record<OverlayFact['kind'], string> = {
-  change: '#3ddc97',
-  keep: '#7a8699',
-  note: '#e0b055',
+  change: SIGNAL.allow,
+  keep: SIGNAL.quiet,
+  note: SIGNAL.hold,
 }
 
 const WARNING_COLOR: Record<OverlayWarning['level'], string> = {
-  error: '#ff6b6b',
-  warning: '#e0b055',
+  error: SIGNAL.veto,
+  warning: SIGNAL.hold,
 }
 
 const styles = {
@@ -107,6 +108,11 @@ export function BlueprintView() {
 
   return (
     <div style={styles.root}>
+      {/* Scoped to this view's own custom properties, so it defines the three
+          signal colours without touching anything the host styles. */}
+      {/* biome-ignore lint/security/noDangerouslySetInnerHtml: a module-level
+          constant with no interpolation; React escapes CSS text otherwise. */}
+      <style dangerouslySetInnerHTML={{ __html: SIGNAL_STYLE }} />
       <LiveReport live={live} />
 
       <section style={styles.card}>
