@@ -105,6 +105,43 @@ function trimTrailingBlankLines(value: string): string {
   return value.replace(/\n+$/, '')
 }
 
+/** A line that is exactly an empty flow sequence, the shape a fresh profile ships. */
+const EMPTY_SEQUENCE = /^\s*\[\]\s*$/
+
+/**
+ * Drop a standalone `[]`, reporting whether one was there.
+ *
+ * A new profile's overlay is `[]` — an empty *flow* sequence, and a complete
+ * YAML document on its own. Appending block-sequence rows after it produces
+ * two documents in one stream, and the loader refuses the file with "end of
+ * the stream or a document separator is expected". Since the row that follows
+ * would not load anyway, the profile does not merely lose the new rows: it
+ * stops booting, taking every tool you would debug it with along with it.
+ *
+ * Only the first one goes. A second `[]` further down is somebody's data, not
+ * the placeholder.
+ */
+function stripEmptySequence(text: string): { text: string; had: boolean } {
+  const lines = text.split('\n')
+  const kept: string[] = []
+  let had = false
+  for (const line of lines) {
+    if (!had && EMPTY_SEQUENCE.test(line)) {
+      had = true
+      continue
+    }
+    kept.push(line)
+  }
+  return { text: kept.join('\n'), had }
+}
+
+/** Whether a composed file would parse as a list rather than as null. */
+function hasContent(text: string): boolean {
+  return text
+    .split('\n')
+    .some((line) => line.trim() !== '' && !line.trimStart().startsWith('#'))
+}
+
 /**
  * Rebuild a patch file with `rows` as this owner's managed block, leaving every
  * other byte where it was. Passing empty rows removes the block entirely.
@@ -120,13 +157,20 @@ export function composePatchFile(
 ): string {
   const { end, header } = markersFor(owner)
   const { before, after } = splitManagedBlock(source, owner)
-  const head = trimTrailingBlankLines(before)
-  const tail = trimTrailingBlankLines(after)
   const body = rows.trim()
 
+  // The placeholder `[]` and real rows cannot share a document, so it goes out
+  // while rows are present — and comes back when the last row leaves, since a
+  // file of nothing but comments parses as null rather than as an empty list.
+  const headStrip = stripEmptySequence(trimTrailingBlankLines(before))
+  const tailStrip = stripEmptySequence(trimTrailingBlankLines(after))
+  const stripped = body !== ''
+  const head = stripped ? headStrip.text : trimTrailingBlankLines(before)
+  const tail = stripped ? tailStrip.text : trimTrailingBlankLines(after)
+
   const parts: string[] = []
-  if (head !== '') {
-    parts.push(head)
+  if (trimTrailingBlankLines(head) !== '') {
+    parts.push(trimTrailingBlankLines(head))
   }
   if (body !== '') {
     parts.push([header, body, end].join('\n'))
@@ -137,7 +181,14 @@ export function composePatchFile(
   if (parts.length === 0) {
     return ''
   }
-  return `${parts.join('\n\n')}\n`
+
+  const composed = `${parts.join('\n\n')}\n`
+  // Removing the last block can leave only comments behind. Restore the
+  // placeholder so the overlay still reads as an empty list.
+  if (!hasContent(composed)) {
+    return `${trimTrailingBlankLines(composed)}\n[]\n`
+  }
+  return composed
 }
 
 /**

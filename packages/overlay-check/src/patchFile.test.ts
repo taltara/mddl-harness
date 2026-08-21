@@ -1,3 +1,4 @@
+import { load } from 'js-yaml'
 import { describe, expect, it } from 'vitest'
 import {
   BLOCK_END,
@@ -180,5 +181,62 @@ describe('two writers sharing one file', () => {
     expect(splitManagedBlock(both, PRAE).managed).toContain('id: prae')
     expect(splitManagedBlock(both, PRAE).managed).not.toContain('ui-blueprint')
     expect(splitManagedBlock(both, BLUEPRINT).managed).toContain('ui-blueprint')
+  })
+})
+
+describe('the composed file is valid YAML', () => {
+  // These assert on `load()` rather than on substrings, because the bug this
+  // suite missed for two releases was invisible to string matching: the output
+  // contained every expected row and still would not parse.
+  const FRESH_PROFILE = `# Your patch layer for this dsh profile, applied after every bundle layer:
+# a top-level YAML array of loader patch entries.
+[]
+`
+  const ROWS = '- insert:\n    - id: prae\n      name: dsh-prae'
+
+  it('drops the placeholder when rows are added to a fresh profile', () => {
+    // `[]` is a complete YAML document. Block-sequence rows after it are a
+    // second document, and the loader refuses the whole file — which does not
+    // lose the rows, it stops the harness booting.
+    const out = composePatchFile(FRESH_PROFILE, ROWS)
+    const parsed = load(out)
+    expect(Array.isArray(parsed)).toBe(true)
+    expect(parsed).toHaveLength(1)
+  })
+
+  it('parses for a named owner too', () => {
+    const out = composePatchFile(FRESH_PROFILE, ROWS, { name: 'prae' })
+    expect(Array.isArray(load(out))).toBe(true)
+  })
+
+  it('parses with two owners writing the same fresh profile', () => {
+    const first = composePatchFile(FRESH_PROFILE, ROWS, {
+      name: 'dsh-blueprint',
+    })
+    const both = composePatchFile(
+      first,
+      '- insert:\n    - id: other\n      name: pkg',
+      { name: 'prae' },
+    )
+    const parsed = load(both)
+    expect(Array.isArray(parsed)).toBe(true)
+    expect(parsed).toHaveLength(2)
+  })
+
+  it('restores the placeholder when the last block is removed', () => {
+    // A file of nothing but comments parses as null, not as an empty list.
+    const withRows = composePatchFile(FRESH_PROFILE, ROWS)
+    const emptied = composePatchFile(withRows, '')
+    const parsed = load(emptied)
+    expect(parsed).toEqual([])
+    expect(emptied).toContain('# Your patch layer')
+  })
+
+  it('leaves a hand-written row list alone', () => {
+    const handWritten = '# mine\n- id: existing\n  name: pkg\n'
+    const out = composePatchFile(handWritten, ROWS)
+    const parsed = load(out) as unknown[]
+    expect(parsed).toHaveLength(2)
+    expect(out).toContain('# mine')
   })
 })
