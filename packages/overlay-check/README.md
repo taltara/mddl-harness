@@ -115,3 +115,19 @@ leaves an entry pending forever. Only a real isolated boot proves that. Treat
 these as the cheap gates before the expensive one.
 
 MIT.
+
+## Config the harness overwrites at boot
+
+`agent-presets.roots` is replaced at boot with the shipped root, so setting it
+in an overlay does nothing — and `--dump-config` still shows your value, because
+the override is applied after the composition it prints. Three people in
+[deepseek-harness#403](https://github.com/deepseek-ai/deepseek-harness/discussions/403)
+lost time to the dump agreeing with them while the runtime did not.
+
+```
+warning  config-silently-overwritten  "agent-presets.roots" is replaced at boot
+with the shipped root ... Put presets in $DSH_HOME/.agent-presets/<id>/ instead.
+```
+
+Confirmed on `0.1.0-rc.7` and `0.1.1-rc.2`. Scoped to one row and one key, so it
+can be deleted cleanly when this is fixed upstream.

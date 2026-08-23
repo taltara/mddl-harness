@@ -115,7 +115,14 @@ but if you get there by another route, two things help:
 
 Early. DSH is itself a developer preview with breaking changes between release
 candidates, so the row ids and patch shape here track a moving target. Verified
-against `@deepseek-ai/dsh` `0.1.0-rc.7`.
+against `@deepseek-ai/dsh` `0.1.0-rc.7` and `0.1.1-rc.2`.
+
+One thing `0.1.1-rc.2` does not fix: `agent-presets.roots` set in an overlay is
+replaced at boot with the shipped root, and `--dump-config` still prints your
+value because the override is applied after the composition it prints. See
+[deepseek-harness#403](https://github.com/deepseek-ai/deepseek-harness/discussions/403).
+`dsh-overlay-check` warns on it rather than letting an overlay claim it
+silently.
 
 ## License
 
