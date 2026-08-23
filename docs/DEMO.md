@@ -21,15 +21,21 @@ exactly the state the screenshot was taken from.
 
 `.claude/launch.json` declares the same server for editors that read it.
 
-## Adding the readme image
+## Regenerating the readme image
 
-Save the frame as `docs/studio.png` and put this under the opening paragraph of
-the readme:
+`scripts/shoot-studio.mjs` drives the same three steps and writes
+`docs/studio.png`, so the picture and these instructions cannot drift apart:
 
-```markdown
-![The studio: models and tools wired into an agent loop, compiling to a cordis.patch.yml overlay](docs/studio.png)
+```sh
+pnpm dev                        # in another shell
+npm i -D playwright-core
+node scripts/shoot-studio.mjs
 ```
 
-The line is not there yet on purpose. A readme that points at an image which
-does not exist renders a broken frame on the repository front page, which is a
-worse first impression than prose.
+It uses the installed Chrome through Playwright's `channel` option, so nothing
+downloads a browser. The shot is taken at 1600x900 with a 2x device pixel ratio
+and then halved, which is why it stays sharp on a retina display.
+
+It also selects a node before shooting. An unselected canvas leaves the
+inspector showing the standalone-mode caveat panel, which is accurate but is not
+what the tool looks like in use.

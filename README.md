@@ -4,9 +4,10 @@ Visual orchestrator for [DeepSeek Harness](https://github.com/deepseek-ai/deepse
 
 This is **not** a fork of `dsh` and **not** a child-process wrapper around `npx @deepseek-ai/dsh`. Upstream already ships a web profile, Cordis patches, and `session/event` telemetry. We compile graphs into that overlay format so the work can later mount as a `dsh-plugin`.
 
+![The studio: Bash, DeepSeek V4 Flash, Web Search and Filesystem wired into an agent loop, with the inspector showing the agent-default-model row](docs/studio.png)
+
 Drag models and tools onto the canvas, wire them into the agent loop, and export
-the overlay. `pnpm dev` opens it at <http://localhost:5173>; see
-[docs/DEMO.md](docs/DEMO.md) for the exact view the readme describes.
+the overlay. `pnpm dev` opens it at <http://localhost:5173>.
 
 ## Why this stack
 
