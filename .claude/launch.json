@@ -4,9 +4,8 @@
     {
       "name": "studio",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["dev"],
-      "port": 5173,
-      "url": "http://localhost:5173"
+      "runtimeArgs": ["--filter", "@mddl/studio", "dev"],
+      "port": 5173
     }
   ]
 }
