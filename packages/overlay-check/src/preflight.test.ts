@@ -97,3 +97,33 @@ describe('preflightOps', () => {
     expect(findings.every((f) => f.level === 'warning')).toBe(true)
   })
 })
+
+describe('config the harness overwrites at boot', () => {
+  it('warns that agent-presets.roots does nothing', async () => {
+    const findings = await preflightOps('/nowhere', [
+      { id: 'agent-presets', config: { roots: [{ path: '/my/presets' }] } },
+    ])
+    const f = findings.find((x) => x.code === 'config-silently-overwritten')
+    expect(f?.level).toBe('warning')
+    expect(f?.text).toContain('$DSH_HOME/.agent-presets')
+  })
+
+  it('says nothing about other agent-presets config, which is kept', async () => {
+    // composeProfile spreads the existing config and replaces only `roots`.
+    const findings = await preflightOps('/nowhere', [
+      { id: 'agent-presets', config: { default: 'standard' } },
+    ])
+    expect(findings.some((x) => x.code === 'config-silently-overwritten')).toBe(
+      false,
+    )
+  })
+
+  it('catches it inside an insert batch too', async () => {
+    const findings = await preflightOps('/nowhere', [
+      { insert: [{ id: 'agent-presets', config: { roots: [] } }] },
+    ])
+    expect(findings.some((x) => x.code === 'config-silently-overwritten')).toBe(
+      true,
+    )
+  })
+})

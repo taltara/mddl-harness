@@ -4,18 +4,36 @@ import { dirname, join, relative, resolve, sep } from "node:path";
 
 //#region src/patchFile.ts
 /**
-* Blueprint owns one marker-delimited region of the profile's
+* A writer owns one marker-delimited region of the profile's
 * `cordis.patch.yml` and nothing else. Everything outside the markers — hand
 * written rows, comments, `!!js` expressions — survives byte for byte, because
 * a config file a GUI cannot share is a config file people stop hand editing.
+*
+* The owner is part of the marker because a block is *replaced* wholesale on
+* every write. Two tools sharing one marker would not merge; whichever wrote
+* second would silently delete the other's rows. Naming the owner gives each
+* writer its own region, and makes the file say who to go back to.
 */
 const BLOCK_START = "# >>> dsh-blueprint managed block";
 const BLOCK_END = "# <<< dsh-blueprint managed block";
-const BLOCK_HEADER = [
-	BLOCK_START,
-	"# Written by the Blueprint tab. Edit it there, or delete the whole block",
-	"# (markers included) to take these rows back by hand."
-].join("\n");
+const DEFAULT_OWNER = {
+	name: "dsh-blueprint",
+	wrote: "Written by the Blueprint tab. Edit it there, or delete the whole block"
+};
+function markersFor(owner) {
+	const name = owner?.name ?? DEFAULT_OWNER.name;
+	const wrote = owner?.wrote ?? DEFAULT_OWNER.wrote;
+	const start = `# >>> ${name} managed block`;
+	return {
+		start,
+		end: `# <<< ${name} managed block`,
+		header: [
+			start,
+			`# ${wrote ?? `Written by ${name}. Delete the whole block`}`,
+			"# (markers included) to take these rows back by hand."
+		].join("\n")
+	};
+}
 /**
 * A marker only counts on its own line at column 0, so the same text inside a
 * YAML block scalar or a comment body is not mistaken for one.
@@ -24,16 +42,17 @@ function markerIndex(lines, marker, from = 0) {
 	for (let i = from; i < lines.length; i += 1) if (lines[i]?.trimEnd() === marker) return i;
 	return -1;
 }
-function splitManagedBlock(source) {
+function splitManagedBlock(source, owner) {
+	const { start: startMarker, end: endMarker } = markersFor(owner);
 	const lines = source.split("\n");
-	const start = markerIndex(lines, BLOCK_START);
+	const start = markerIndex(lines, startMarker);
 	if (start === -1) return {
 		before: source,
 		managed: void 0,
 		after: ""
 	};
-	const end = markerIndex(lines, BLOCK_END, start + 1);
-	if (end === -1) throw new Error(`${BLOCK_START} has no matching ${BLOCK_END}. Fix or remove the block by hand before applying.`);
+	const end = markerIndex(lines, endMarker, start + 1);
+	if (end === -1) throw new Error(`${startMarker} has no matching ${endMarker}. Fix or remove the block by hand before applying.`);
 	let headerStart = start;
 	while (headerStart > 0 && lines[headerStart - 1]?.startsWith("# ")) headerStart -= 1;
 	return {
@@ -42,32 +61,77 @@ function splitManagedBlock(source) {
 		after: lines.slice(end + 1).join("\n")
 	};
 }
-/** Whether a file already carries a Blueprint block. */
-function hasManagedBlock(source) {
-	return markerIndex(source.split("\n"), BLOCK_START) !== -1;
+/** Whether a file already carries this owner's block. */
+function hasManagedBlock(source, owner) {
+	return markerIndex(source.split("\n"), markersFor(owner).start) !== -1;
 }
 function trimTrailingBlankLines(value) {
 	return value.replace(/\n+$/, "");
 }
+/** A line that is exactly an empty flow sequence, the shape a fresh profile ships. */
+const EMPTY_SEQUENCE = /^\s*\[\]\s*$/;
 /**
-* Rebuild a patch file with `rows` as the managed block, leaving every other
-* byte where it was. Passing empty rows removes the block entirely.
+* Drop a standalone `[]`, reporting whether one was there.
+*
+* A new profile's overlay is `[]` — an empty *flow* sequence, and a complete
+* YAML document on its own. Appending block-sequence rows after it produces
+* two documents in one stream, and the loader refuses the file with "end of
+* the stream or a document separator is expected". Since the row that follows
+* would not load anyway, the profile does not merely lose the new rows: it
+* stops booting, taking every tool you would debug it with along with it.
+*
+* Only the first one goes. A second `[]` further down is somebody's data, not
+* the placeholder.
 */
-function composePatchFile(source, rows) {
-	const { before, after } = splitManagedBlock(source);
-	const head = trimTrailingBlankLines(before);
-	const tail = trimTrailingBlankLines(after);
+function stripEmptySequence(text) {
+	const lines = text.split("\n");
+	const kept = [];
+	let had = false;
+	for (const line of lines) {
+		if (!had && EMPTY_SEQUENCE.test(line)) {
+			had = true;
+			continue;
+		}
+		kept.push(line);
+	}
+	return {
+		text: kept.join("\n"),
+		had
+	};
+}
+/** Whether a composed file would parse as a list rather than as null. */
+function hasContent(text) {
+	return text.split("\n").some((line) => line.trim() !== "" && !line.trimStart().startsWith("#"));
+}
+/**
+* Rebuild a patch file with `rows` as this owner's managed block, leaving every
+* other byte where it was. Passing empty rows removes the block entirely.
+*
+* Only the named owner's block is touched. Another writer's block sits in
+* `before` or `after` and survives untouched, which is what lets two tools
+* manage the same file without erasing each other.
+*/
+function composePatchFile(source, rows, owner) {
+	const { end, header } = markersFor(owner);
+	const { before, after } = splitManagedBlock(source, owner);
 	const body = rows.trim();
+	const headStrip = stripEmptySequence(trimTrailingBlankLines(before));
+	const tailStrip = stripEmptySequence(trimTrailingBlankLines(after));
+	const stripped = body !== "";
+	const head = stripped ? headStrip.text : trimTrailingBlankLines(before);
+	const tail = stripped ? tailStrip.text : trimTrailingBlankLines(after);
 	const parts = [];
-	if (head !== "") parts.push(head);
+	if (trimTrailingBlankLines(head) !== "") parts.push(trimTrailingBlankLines(head));
 	if (body !== "") parts.push([
-		BLOCK_HEADER,
+		header,
 		body,
-		BLOCK_END
+		end
 	].join("\n"));
 	if (tail !== "") parts.push(tail);
 	if (parts.length === 0) return "";
-	return `${parts.join("\n\n")}\n`;
+	const composed = `${parts.join("\n\n")}\n`;
+	if (!hasContent(composed)) return `${trimTrailingBlankLines(composed)}\n[]\n`;
+	return composed;
 }
 /**
 * Precondition token for a write. Short, and only ever compared to itself —
@@ -185,6 +249,36 @@ async function preflightOps(profileDir, ops, liveIds = /* @__PURE__ */ new Set()
 			code: "insert-over-existing",
 			text: `"${row.id}" already exists in the running tree, so inserting it again is likely to collide rather than add.`
 		});
+	}
+	findings.push(...overwrittenConfig(ops));
+	return findings;
+}
+/**
+* Config the harness accepts, records, and then throws away.
+*
+* `composeProfile` appends its own overlay for the `agent-presets` row that
+* spreads whatever config reached it and then hard-replaces `roots` with the
+* shipped root alone. Anything you set there is gone before the loader sees it.
+*
+* What makes this worth a rule rather than a doc note is that the obvious way
+* to check your work agrees with you: the override is appended AFTER the
+* composition `--dump-config` prints, so the dump shows your value and the
+* runtime uses another. Reported upstream in deepseek-harness#403 and
+* corroborated on 0.1.0-rc.7 and 0.1.1-rc.2.
+*/
+function overwrittenConfig(ops) {
+	const findings = [];
+	for (const op of ops) {
+		const rows = isInsertOp(op) ? op.insert : [op];
+		for (const row of rows) {
+			if (row.id !== "agent-presets") continue;
+			if (row.config === void 0 || !("roots" in row.config)) continue;
+			findings.push({
+				level: "warning",
+				code: "config-silently-overwritten",
+				text: "\"agent-presets.roots\" is replaced at boot with the shipped root, so setting it here does nothing — and --dump-config will still show your value, because the override is applied after the composition it prints. Put presets in $DSH_HOME/.agent-presets/<id>/ instead: that root is appended separately and is not affected. See deepseek-harness#403."
+			});
+		}
 	}
 	return findings;
 }

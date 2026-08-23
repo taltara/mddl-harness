@@ -119,6 +119,38 @@ export async function preflightOps(
     }
   }
 
+  findings.push(...overwrittenConfig(ops))
+
+  return findings
+}
+
+/**
+ * Config the harness accepts, records, and then throws away.
+ *
+ * `composeProfile` appends its own overlay for the `agent-presets` row that
+ * spreads whatever config reached it and then hard-replaces `roots` with the
+ * shipped root alone. Anything you set there is gone before the loader sees it.
+ *
+ * What makes this worth a rule rather than a doc note is that the obvious way
+ * to check your work agrees with you: the override is appended AFTER the
+ * composition `--dump-config` prints, so the dump shows your value and the
+ * runtime uses another. Reported upstream in deepseek-harness#403 and
+ * corroborated on 0.1.0-rc.7 and 0.1.1-rc.2.
+ */
+function overwrittenConfig(ops: CordisPatchOp[]): PreflightFinding[] {
+  const findings: PreflightFinding[] = []
+  for (const op of ops) {
+    const rows = isInsertOp(op) ? op.insert : [op]
+    for (const row of rows) {
+      if (row.id !== 'agent-presets') continue
+      if (row.config === undefined || !('roots' in row.config)) continue
+      findings.push({
+        level: 'warning',
+        code: 'config-silently-overwritten',
+        text: '"agent-presets.roots" is replaced at boot with the shipped root, so setting it here does nothing — and --dump-config will still show your value, because the override is applied after the composition it prints. Put presets in $DSH_HOME/.agent-presets/<id>/ instead: that root is appended separately and is not affected. See deepseek-harness#403.',
+      })
+    }
+  }
   return findings
 }
 

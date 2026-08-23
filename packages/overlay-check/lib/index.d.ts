@@ -1,28 +1,44 @@
 //#region src/patchFile.d.ts
 /**
- * Blueprint owns one marker-delimited region of the profile's
+ * A writer owns one marker-delimited region of the profile's
  * `cordis.patch.yml` and nothing else. Everything outside the markers — hand
  * written rows, comments, `!!js` expressions — survives byte for byte, because
  * a config file a GUI cannot share is a config file people stop hand editing.
+ *
+ * The owner is part of the marker because a block is *replaced* wholesale on
+ * every write. Two tools sharing one marker would not merge; whichever wrote
+ * second would silently delete the other's rows. Naming the owner gives each
+ * writer its own region, and makes the file say who to go back to.
  */
 declare const BLOCK_START = "# >>> dsh-blueprint managed block";
 declare const BLOCK_END = "# <<< dsh-blueprint managed block";
+/** The writer whose block is being read or rewritten. */
+interface BlockOwner {
+  /** Appears in the markers, e.g. `prae` → `# >>> prae managed block`. */
+  readonly name: string;
+  /** One line telling a reader where these rows came from. */
+  readonly wrote?: string;
+}
 interface ManagedSplit {
   /** Everything before the block. Empty when the file has no block yet. */
   before: string;
-  /** The rows Blueprint owns, without the markers. Undefined when absent. */
+  /** The rows this owner controls, without the markers. Undefined when absent. */
   managed: string | undefined;
   /** Everything after the block. */
   after: string;
 }
-declare function splitManagedBlock(source: string): ManagedSplit;
-/** Whether a file already carries a Blueprint block. */
-declare function hasManagedBlock(source: string): boolean;
+declare function splitManagedBlock(source: string, owner?: BlockOwner): ManagedSplit;
+/** Whether a file already carries this owner's block. */
+declare function hasManagedBlock(source: string, owner?: BlockOwner): boolean;
 /**
- * Rebuild a patch file with `rows` as the managed block, leaving every other
- * byte where it was. Passing empty rows removes the block entirely.
+ * Rebuild a patch file with `rows` as this owner's managed block, leaving every
+ * other byte where it was. Passing empty rows removes the block entirely.
+ *
+ * Only the named owner's block is touched. Another writer's block sits in
+ * `before` or `after` and survives untouched, which is what lets two tools
+ * manage the same file without erasing each other.
  */
-declare function composePatchFile(source: string, rows: string): string;
+declare function composePatchFile(source: string, rows: string, owner?: BlockOwner): string;
 /**
  * Precondition token for a write. Short, and only ever compared to itself —
  * this detects a file that moved under us, it is not a security boundary.
@@ -177,4 +193,4 @@ declare function snapshotContent(store: SnapshotStore, manifest: SnapshotManifes
 /** Re-export for callers that keep their own copies. */
 declare function copySnapshotTo(store: SnapshotStore, manifest: SnapshotManifest, destination: string): Promise<void>;
 //#endregion
-export { BLOCK_END, BLOCK_START, type CordisInsertOp, type CordisPatchOp, type CordisRow, type ManagedSplit, type PreflightFinding, type PreflightLevel, type RestoreResult, type SnapshotEntry, type SnapshotKind, type SnapshotManifest, type SnapshotStore, composePatchFile, copySnapshotTo, diffAgainstSnapshot, diffLines, hasManagedBlock, isBarePackage, isInsertOp, isInstalled, listSnapshots, packageNameOf, preflightOps, presetProblem, pruneSnapshots, restoreSnapshot, revisionOf, snapshotBytes, snapshotContent, splitManagedBlock, takeSnapshot };
+export { BLOCK_END, BLOCK_START, type BlockOwner, type CordisInsertOp, type CordisPatchOp, type CordisRow, type ManagedSplit, type PreflightFinding, type PreflightLevel, type RestoreResult, type SnapshotEntry, type SnapshotKind, type SnapshotManifest, type SnapshotStore, composePatchFile, copySnapshotTo, diffAgainstSnapshot, diffLines, hasManagedBlock, isBarePackage, isInsertOp, isInstalled, listSnapshots, packageNameOf, preflightOps, presetProblem, pruneSnapshots, restoreSnapshot, revisionOf, snapshotBytes, snapshotContent, splitManagedBlock, takeSnapshot };
