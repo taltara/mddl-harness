@@ -6,6 +6,30 @@
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["--filter", "@mddl/studio", "dev"],
       "port": 5173
+    },
+    {
+      "name": "prae-web",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "--dir",
+        "/Users/taltara/Documents/Workspace/prae-harness/apps/web",
+        "dev",
+        "--port",
+        "4321"
+      ],
+      "port": 4321
+    },
+    {
+      "name": "prae-preview",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "--dir",
+        "/Users/taltara/Documents/Workspace/prae-harness/apps/web",
+        "preview",
+        "--port",
+        "4322"
+      ],
+      "port": 4322
     }
   ]
 }
